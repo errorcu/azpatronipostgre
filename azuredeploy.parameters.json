@@ -2,26 +2,68 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "location": { "value": "Germany West Central" },
-    "prefix": { "value": "pgpatroni" },
-    "adminUsername": { "value": "azureuser" },
-    "adminPassword": { "value": "Azure@123456789!" },
-    "vmSize": { "value": "Standard_D4s_v5" },
-    "dataDiskSizeGB": { "value": 1024 },
-    "walDiskSizeGB": { "value": 512 },
-    "diskSku": { "value": "Premium_LRS" },
-    "addressPrefix": { "value": "10.50.0.0/16" },
-    "subnetPrefix": { "value": "10.50.1.0/24" },
-    "zones": { "value": [ "1", "2", "3" ] },
-    "lbPrivateIP": { "value": "10.50.1.10" },
-    "postgresPassword": { "value": "ChangeMe@123456!" },
-    "replicatorPassword": { "value": "ChangeMe@123456!" },
-    "enablePublicLB": { "value": false },
-    "enablePgBouncerTier": { "value": true },
-    "pgbouncerLbPrivateIP": { "value": "10.50.1.11" },
-    "pgbouncerDefaultPool": { "value": 200 },
-    "pgbouncerMaxClientConn": { "value": 2000 },
-    "pgbouncerAdminUser": { "value": "pgbouncer" },
-    "pgbouncerAdminPass": { "value": "StrongPass@123!" }
+    "region": { 
+      "value": "Germany West Central" 
+    },
+    "prefix": { 
+      "value": "pgpatroni" 
+    },
+    "adminUsername": { 
+      "value": "azureuser" 
+    },
+    "adminPassword": { 
+      "value": "Azure@Patroni2024!" 
+    },
+    "vmSize": { 
+      "value": "Standard_D4s_v5" 
+    },
+    "numberOfNodes": { 
+      "value": 2 
+    },
+    "dataDiskSizeGB": { 
+      "value": 1024 
+    },
+    "walDiskSizeGB": { 
+      "value": 512 
+    },
+    "diskSku": { 
+      "value": "Premium_LRS" 
+    },
+    "addressPrefix": { 
+      "value": "10.50.0.0/16" 
+    },
+    "subnetPrefix": { 
+      "value": "10.50.1.0/24" 
+    },
+    "lbPrivateIP": { 
+      "value": "10.50.1.10" 
+    },
+    "postgresPassword": { 
+      "value": "PostgreSQL@2024!" 
+    },
+    "replicatorPassword": { 
+      "value": "Replicator@2024!" 
+    },
+    "enablePublicLB": { 
+      "value": false 
+    },
+    "enablePgBouncerTier": { 
+      "value": true 
+    },
+    "pgbouncerLbPrivateIP": { 
+      "value": "10.50.1.11" 
+    },
+    "pgbouncerDefaultPool": { 
+      "value": 200 
+    },
+    "pgbouncerMaxClientConn": { 
+      "value": 2000 
+    },
+    "pgbouncerAdminUser": { 
+      "value": "pgbouncer" 
+    },
+    "pgbouncerAdminPass": { 
+      "value": "PgBouncer@2024!" 
+    }
   }
 }

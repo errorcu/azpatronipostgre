@@ -6,7 +6,28 @@ Production-ready PostgreSQL High Availability cluster on Azure with Patroni, etc
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ferrorcu%2Fazpatronipostgre%2Fmain%2Fazuredeploy.json)
 
-**One-click deployment** - No manual configuration required!
+**One-click deployment** - Fill in the required passwords and deploy!
+
+## 🔑 Default Credentials (For Quick Testing)
+
+**⚠️ IMPORTANT**: Change these passwords in production!
+
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| **Admin Username** | `azureuser` | VM admin username |
+| **Admin Password** | `Azure@Patroni2024!` | VM admin password |
+| **Postgres Password** | `PostgreSQL@2024!` | PostgreSQL superuser password |
+| **Replicator Password** | `Replicator@2024!` | PostgreSQL replication password |
+| **PgBouncer Admin User** | `pgbouncer` | PgBouncer admin user |
+| **PgBouncer Admin Pass** | `PgBouncer@2024!` | PgBouncer admin password |
+
+**Quick Deploy**: Copy these values into Azure Portal when deploying, or use the parameters file:
+```bash
+az deployment group create \
+  --resource-group YourResourceGroup \
+  --template-file azuredeploy.json \
+  --parameters @azuredeploy.parameters.json
+```
 
 ## ✨ What You Get
 
