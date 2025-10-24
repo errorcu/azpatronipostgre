@@ -122,7 +122,7 @@ bootstrap:
     - host all all 10.50.0.0/16 md5
   users:
     replicator:
-      password: ChangeMe123Pass
+      password: Replicator2024#Secure
       options:
         - replication
 postgresql:
@@ -134,10 +134,10 @@ postgresql:
   authentication:
     superuser:
       username: postgres
-      password: ChangeMe123Pass
+      password: PostgreSQL2024#Strong
     replication:
       username: replicator
-      password: ChangeMe123Pass
+      password: Replicator2024#Secure
 tags:
   nofailover: false
   noloadbalance: false

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "11293436993302279307"
+      "templateHash": "561180111488648998"
     }
   },
   "parameters": {
@@ -32,7 +32,7 @@
     },
     "adminPassword": {
       "type": "securestring",
-      "defaultValue": "Azure@Patroni2024!",
+      "defaultValue": "AzurePatroni2024#",
       "metadata": {
         "description": "Admin password for VMs"
       }
@@ -106,14 +106,14 @@
     },
     "postgresPassword": {
       "type": "securestring",
-      "defaultValue": "PostgreSQL@2024!",
+      "defaultValue": "PostgreSQL2024#Strong",
       "metadata": {
         "description": "PostgreSQL password"
       }
     },
     "replicatorPassword": {
       "type": "securestring",
-      "defaultValue": "Replicator@2024!",
+      "defaultValue": "Replicator2024#Secure",
       "metadata": {
         "description": "Replicator password"
       }
@@ -162,7 +162,7 @@
     },
     "pgbouncerAdminPass": {
       "type": "securestring",
-      "defaultValue": "PgBouncer@2024!",
+      "defaultValue": "PgBouncer2024#Admin",
       "metadata": {
         "description": "PgBouncer admin password"
       }
@@ -1211,7 +1211,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "9098655090687313119"
+              "templateHash": "11174756675233466827"
             }
           },
           "parameters": {
@@ -1327,7 +1327,7 @@
             }
           },
           "variables": {
-            "$fxv#0": "#cloud-config\r\n\r\npackages:\r\n  - jq\r\n  - curl\r\n  - gnupg\r\n  - lsb-release\r\n  - python3-pip\r\n  - etcd\r\n  - parted\r\n\r\nruncmd:\r\n  - curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pg.gpg\r\n  - echo \"deb [signed-by=/usr/share/keyrings/pg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main\" > /etc/apt/sources.list.d/pg.list\r\n  - apt-get update\r\n  - apt-get install -y postgresql-16 python3-psycopg2\r\n  - sysctl -w vm.swappiness=1\r\n  - sysctl -w vm.max_map_count=262144\r\n  - |\r\n    DISK_DATA=/dev/disk/azure/scsi1/lun0\r\n    if [ -b \"$DISK_DATA\" ]; then\r\n      parted -s ${DISK_DATA} mklabel gpt mkpart primary ext4 1MiB 100%\r\n      sleep 3\r\n      mkfs.ext4 -F ${DISK_DATA}1\r\n      mkdir -p /pgdata\r\n      echo \"${DISK_DATA}1 /pgdata ext4 defaults,noatime 0 2\" >> /etc/fstab\r\n      mount -a\r\n      chmod 700 /pgdata\r\n      chown -R postgres:postgres /pgdata\r\n    fi\r\n  - |\r\n    DISK_WAL=/dev/disk/azure/scsi1/lun1\r\n    if [ -b \"$DISK_WAL\" ]; then\r\n      parted -s ${DISK_WAL} mklabel gpt mkpart primary ext4 1MiB 100%\r\n      sleep 3\r\n      mkfs.ext4 -F ${DISK_WAL}1\r\n      mkdir -p /pgwal\r\n      echo \"${DISK_WAL}1 /pgwal ext4 defaults,noatime 0 2\" >> /etc/fstab\r\n      mount -a\r\n      chmod 700 /pgwal\r\n      chown -R postgres:postgres /pgwal\r\n    fi\r\n  - |\r\n    HOSTNAME=$(hostname -s)\r\n    IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)\r\n    \r\n    # Auto-detect etcd cluster size (2 or 3 nodes)\r\n    ETCD_CLUSTER=\"pgpatroni-1=http://10.50.1.4:2380,pgpatroni-2=http://10.50.1.5:2380\"\r\n    ETCD_HOSTS=\"10.50.1.4:2379,10.50.1.5:2379\"\r\n    \r\n    # Check if 3rd node exists (wait up to 30 seconds)\r\n    for i in {1..6}; do\r\n      if ping -c 1 -W 1 10.50.1.6 > /dev/null 2>&1; then\r\n        ETCD_CLUSTER=\"${ETCD_CLUSTER},pgpatroni-3=http://10.50.1.6:2380\"\r\n        ETCD_HOSTS=\"${ETCD_HOSTS},10.50.1.6:2379\"\r\n        echo \"Detected 3-node cluster\"\r\n        break\r\n      fi\r\n      sleep 5\r\n    done\r\n    \r\n    cat > /etc/default/etcd <<ETCDEOF\r\nETCD_NAME=\"${HOSTNAME}\"\r\nETCD_INITIAL_CLUSTER=\"${ETCD_CLUSTER}\"\r\nETCD_INITIAL_CLUSTER_STATE=\"new\"\r\nETCD_INITIAL_ADVERTISE_PEER_URLS=\"http://${IP}:2380\"\r\nETCD_ADVERTISE_CLIENT_URLS=\"http://${IP}:2379\"\r\nETCD_LISTEN_PEER_URLS=\"http://${IP}:2380\"\r\nETCD_LISTEN_CLIENT_URLS=\"http://127.0.0.1:2379,http://${IP}:2379\"\r\nETCDEOF\r\n    \r\n    # Save etcd hosts for Patroni\r\n    echo \"${ETCD_HOSTS}\" > /tmp/etcd_hosts\r\n  - systemctl stop postgresql || true\r\n  - systemctl disable postgresql || true\r\n  - systemctl enable etcd\r\n  - systemctl restart etcd\r\n  - sleep 10\r\n  - pip3 install patroni[etcd] requests\r\n  - mkdir -p /etc/patroni\r\n  - |\r\n    HOSTNAME=$(hostname -s)\r\n    IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)\r\n    ETCD_HOSTS=$(cat /tmp/etcd_hosts)\r\n    \r\n    cat > /etc/patroni/patroni.yml <<PATRONIEOF\r\nscope: pg-ha\r\nnamespace: /service/\r\nname: ${HOSTNAME}\r\nrestapi:\r\n  listen: 0.0.0.0:8008\r\n  connect_address: ${IP}:8008\r\netcd:\r\n  hosts: ${ETCD_HOSTS}\r\nbootstrap:\r\n  dcs:\r\n    ttl: 20\r\n    loop_wait: 5\r\n    retry_timeout: 5\r\n    maximum_lag_on_failover: 1048576\r\n    synchronous_mode: true\r\n    synchronous_mode_strict: false\r\n    synchronous_node_count: 1\r\n    postgresql:\r\n      parameters:\r\n        wal_level: logical\r\n        max_wal_senders: 20\r\n        max_replication_slots: 20\r\n        shared_buffers: 4GB\r\n        effective_cache_size: 8GB\r\n        maintenance_work_mem: 1GB\r\n        work_mem: 64MB\r\n        checkpoint_timeout: 10min\r\n        synchronous_commit: on\r\n      use_slots: true\r\n      use_pg_rewind: true\r\n  initdb:\r\n    - encoding: UTF8\r\n    - data-checksums\r\n  pg_hba:\r\n    - host replication replicator 10.50.0.0/16 md5\r\n    - host all all 10.50.0.0/16 md5\r\n  users:\r\n    replicator:\r\n      password: ChangeMe123Pass\r\n      options:\r\n        - replication\r\npostgresql:\r\n  listen: 0.0.0.0:5432\r\n  connect_address: ${IP}:5432\r\n  data_dir: /pgdata\r\n  bin_dir: /usr/lib/postgresql/16/bin\r\n  parameters: {}\r\n  authentication:\r\n    superuser:\r\n      username: postgres\r\n      password: ChangeMe123Pass\r\n    replication:\r\n      username: replicator\r\n      password: ChangeMe123Pass\r\ntags:\r\n  nofailover: false\r\n  noloadbalance: false\r\n  clonefrom: false\r\nPATRONIEOF\r\n  - chown postgres:postgres /etc/patroni/patroni.yml\r\n  - |\r\n    cat > /etc/systemd/system/patroni.service <<'SERVICEEOF'\r\n[Unit]\r\nDescription=Patroni PostgreSQL HA\r\nAfter=network.target etcd.service\r\n\r\n[Service]\r\nType=simple\r\nUser=postgres\r\nGroup=postgres\r\nExecStart=/usr/local/bin/patroni /etc/patroni/patroni.yml\r\nRestart=on-failure\r\nRestartSec=5\r\nLimitNOFILE=100000\r\n\r\n[Install]\r\nWantedBy=multi-user.target\r\nSERVICEEOF\r\n  - systemctl daemon-reload\r\n  - systemctl enable patroni\r\n  - systemctl start patroni\r\n"
+            "$fxv#0": "#cloud-config\r\n\r\npackages:\r\n  - jq\r\n  - curl\r\n  - gnupg\r\n  - lsb-release\r\n  - python3-pip\r\n  - etcd\r\n  - parted\r\n\r\nruncmd:\r\n  - curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pg.gpg\r\n  - echo \"deb [signed-by=/usr/share/keyrings/pg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main\" > /etc/apt/sources.list.d/pg.list\r\n  - apt-get update\r\n  - apt-get install -y postgresql-16 python3-psycopg2\r\n  - sysctl -w vm.swappiness=1\r\n  - sysctl -w vm.max_map_count=262144\r\n  - |\r\n    DISK_DATA=/dev/disk/azure/scsi1/lun0\r\n    if [ -b \"$DISK_DATA\" ]; then\r\n      parted -s ${DISK_DATA} mklabel gpt mkpart primary ext4 1MiB 100%\r\n      sleep 3\r\n      mkfs.ext4 -F ${DISK_DATA}1\r\n      mkdir -p /pgdata\r\n      echo \"${DISK_DATA}1 /pgdata ext4 defaults,noatime 0 2\" >> /etc/fstab\r\n      mount -a\r\n      chmod 700 /pgdata\r\n      chown -R postgres:postgres /pgdata\r\n    fi\r\n  - |\r\n    DISK_WAL=/dev/disk/azure/scsi1/lun1\r\n    if [ -b \"$DISK_WAL\" ]; then\r\n      parted -s ${DISK_WAL} mklabel gpt mkpart primary ext4 1MiB 100%\r\n      sleep 3\r\n      mkfs.ext4 -F ${DISK_WAL}1\r\n      mkdir -p /pgwal\r\n      echo \"${DISK_WAL}1 /pgwal ext4 defaults,noatime 0 2\" >> /etc/fstab\r\n      mount -a\r\n      chmod 700 /pgwal\r\n      chown -R postgres:postgres /pgwal\r\n    fi\r\n  - |\r\n    HOSTNAME=$(hostname -s)\r\n    IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)\r\n    \r\n    # Auto-detect etcd cluster size (2 or 3 nodes)\r\n    ETCD_CLUSTER=\"pgpatroni-1=http://10.50.1.4:2380,pgpatroni-2=http://10.50.1.5:2380\"\r\n    ETCD_HOSTS=\"10.50.1.4:2379,10.50.1.5:2379\"\r\n    \r\n    # Check if 3rd node exists (wait up to 30 seconds)\r\n    for i in {1..6}; do\r\n      if ping -c 1 -W 1 10.50.1.6 > /dev/null 2>&1; then\r\n        ETCD_CLUSTER=\"${ETCD_CLUSTER},pgpatroni-3=http://10.50.1.6:2380\"\r\n        ETCD_HOSTS=\"${ETCD_HOSTS},10.50.1.6:2379\"\r\n        echo \"Detected 3-node cluster\"\r\n        break\r\n      fi\r\n      sleep 5\r\n    done\r\n    \r\n    cat > /etc/default/etcd <<ETCDEOF\r\nETCD_NAME=\"${HOSTNAME}\"\r\nETCD_INITIAL_CLUSTER=\"${ETCD_CLUSTER}\"\r\nETCD_INITIAL_CLUSTER_STATE=\"new\"\r\nETCD_INITIAL_ADVERTISE_PEER_URLS=\"http://${IP}:2380\"\r\nETCD_ADVERTISE_CLIENT_URLS=\"http://${IP}:2379\"\r\nETCD_LISTEN_PEER_URLS=\"http://${IP}:2380\"\r\nETCD_LISTEN_CLIENT_URLS=\"http://127.0.0.1:2379,http://${IP}:2379\"\r\nETCDEOF\r\n    \r\n    # Save etcd hosts for Patroni\r\n    echo \"${ETCD_HOSTS}\" > /tmp/etcd_hosts\r\n  - systemctl stop postgresql || true\r\n  - systemctl disable postgresql || true\r\n  - systemctl enable etcd\r\n  - systemctl restart etcd\r\n  - sleep 10\r\n  - pip3 install patroni[etcd] requests\r\n  - mkdir -p /etc/patroni\r\n  - |\r\n    HOSTNAME=$(hostname -s)\r\n    IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)\r\n    ETCD_HOSTS=$(cat /tmp/etcd_hosts)\r\n    \r\n    cat > /etc/patroni/patroni.yml <<PATRONIEOF\r\nscope: pg-ha\r\nnamespace: /service/\r\nname: ${HOSTNAME}\r\nrestapi:\r\n  listen: 0.0.0.0:8008\r\n  connect_address: ${IP}:8008\r\netcd:\r\n  hosts: ${ETCD_HOSTS}\r\nbootstrap:\r\n  dcs:\r\n    ttl: 20\r\n    loop_wait: 5\r\n    retry_timeout: 5\r\n    maximum_lag_on_failover: 1048576\r\n    synchronous_mode: true\r\n    synchronous_mode_strict: false\r\n    synchronous_node_count: 1\r\n    postgresql:\r\n      parameters:\r\n        wal_level: logical\r\n        max_wal_senders: 20\r\n        max_replication_slots: 20\r\n        shared_buffers: 4GB\r\n        effective_cache_size: 8GB\r\n        maintenance_work_mem: 1GB\r\n        work_mem: 64MB\r\n        checkpoint_timeout: 10min\r\n        synchronous_commit: on\r\n      use_slots: true\r\n      use_pg_rewind: true\r\n  initdb:\r\n    - encoding: UTF8\r\n    - data-checksums\r\n  pg_hba:\r\n    - host replication replicator 10.50.0.0/16 md5\r\n    - host all all 10.50.0.0/16 md5\r\n  users:\r\n    replicator:\r\n      password: Replicator2024#Secure\r\n      options:\r\n        - replication\r\npostgresql:\r\n  listen: 0.0.0.0:5432\r\n  connect_address: ${IP}:5432\r\n  data_dir: /pgdata\r\n  bin_dir: /usr/lib/postgresql/16/bin\r\n  parameters: {}\r\n  authentication:\r\n    superuser:\r\n      username: postgres\r\n      password: PostgreSQL2024#Strong\r\n    replication:\r\n      username: replicator\r\n      password: Replicator2024#Secure\r\ntags:\r\n  nofailover: false\r\n  noloadbalance: false\r\n  clonefrom: false\r\nPATRONIEOF\r\n  - chown postgres:postgres /etc/patroni/patroni.yml\r\n  - |\r\n    cat > /etc/systemd/system/patroni.service <<'SERVICEEOF'\r\n[Unit]\r\nDescription=Patroni PostgreSQL HA\r\nAfter=network.target etcd.service\r\n\r\n[Service]\r\nType=simple\r\nUser=postgres\r\nGroup=postgres\r\nExecStart=/usr/local/bin/patroni /etc/patroni/patroni.yml\r\nRestart=on-failure\r\nRestartSec=5\r\nLimitNOFILE=100000\r\n\r\n[Install]\r\nWantedBy=multi-user.target\r\nSERVICEEOF\r\n  - systemctl daemon-reload\r\n  - systemctl enable patroni\r\n  - systemctl start patroni\r\n"
           },
           "resources": [
             {
@@ -1502,7 +1502,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "10359674442374336154"
+              "templateHash": "10341154056056497164"
             }
           },
           "parameters": {
@@ -1610,7 +1610,7 @@
             }
           },
           "variables": {
-            "$fxv#0": "#cloud-config\r\n\r\npackages:\r\n  - pgbouncer\r\n  - postgresql-client\r\n\r\nruncmd:\r\n  - |\r\n    cat > /etc/pgbouncer/pgbouncer.ini <<'PGBEOF'\r\n    [databases]\r\n    postgres = host=10.50.1.10 port=5432 dbname=postgres\r\n    * = host=10.50.1.10 port=5432\r\n    [pgbouncer]\r\n    listen_addr = 0.0.0.0\r\n    listen_port = 6432\r\n    pool_mode = transaction\r\n    default_pool_size = 200\r\n    max_client_conn = 2000\r\n    ignore_startup_parameters = extra_float_digits\r\n    server_tls_sslmode = prefer\r\n    auth_type = md5\r\n    auth_file = /etc/pgbouncer/userlist.txt\r\n    admin_users = pgbouncer\r\n    PGBEOF\r\n  - |\r\n    cat > /etc/pgbouncer/userlist.txt <<'USEREOF'\r\n    \"pgbouncer\" \"StrongPass123\"\r\n    USEREOF\r\n  - chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt\r\n  - chmod 640 /etc/pgbouncer/userlist.txt\r\n  - systemctl enable pgbouncer\r\n  - systemctl restart pgbouncer\r\n"
+            "$fxv#0": "#cloud-config\r\n\r\npackages:\r\n  - pgbouncer\r\n  - postgresql-client\r\n\r\nruncmd:\r\n  - |\r\n    cat > /etc/pgbouncer/pgbouncer.ini <<'PGBEOF'\r\n    [databases]\r\n    postgres = host=10.50.1.10 port=5432 dbname=postgres\r\n    * = host=10.50.1.10 port=5432\r\n    [pgbouncer]\r\n    listen_addr = 0.0.0.0\r\n    listen_port = 6432\r\n    pool_mode = transaction\r\n    default_pool_size = 200\r\n    max_client_conn = 2000\r\n    ignore_startup_parameters = extra_float_digits\r\n    server_tls_sslmode = prefer\r\n    auth_type = md5\r\n    auth_file = /etc/pgbouncer/userlist.txt\r\n    admin_users = pgbouncer\r\n    PGBEOF\r\n  - |\r\n    cat > /etc/pgbouncer/userlist.txt <<'USEREOF'\r\n    \"pgbouncer\" \"PgBouncer2024#Admin\"\r\n    USEREOF\r\n  - chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt\r\n  - chmod 640 /etc/pgbouncer/userlist.txt\r\n  - systemctl enable pgbouncer\r\n  - systemctl restart pgbouncer\r\n"
           },
           "resources": [
             {

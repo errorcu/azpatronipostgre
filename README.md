@@ -12,14 +12,16 @@ Production-ready PostgreSQL High Availability cluster on Azure with Patroni, etc
 
 **⚠️ IMPORTANT**: Change these passwords in production!
 
+**Note**: These passwords are PostgreSQL/Patroni compatible (no `!` character which can cause issues).
+
 | Parameter | Default Value | Description |
 |-----------|---------------|-------------|
 | **Admin Username** | `azureuser` | VM admin username |
-| **Admin Password** | `Azure@Patroni2024!` | VM admin password |
-| **Postgres Password** | `PostgreSQL@2024!` | PostgreSQL superuser password |
-| **Replicator Password** | `Replicator@2024!` | PostgreSQL replication password |
+| **Admin Password** | `AzurePatroni2024#` | VM admin password |
+| **Postgres Password** | `PostgreSQL2024#Strong` | PostgreSQL superuser password |
+| **Replicator Password** | `Replicator2024#Secure` | PostgreSQL replication password |
 | **PgBouncer Admin User** | `pgbouncer` | PgBouncer admin user |
-| **PgBouncer Admin Pass** | `PgBouncer@2024!` | PgBouncer admin password |
+| **PgBouncer Admin Pass** | `PgBouncer2024#Admin` | PgBouncer admin password |
 
 **Quick Deploy**: Copy these values into Azure Portal when deploying, or use the parameters file:
 ```bash
@@ -48,10 +50,10 @@ az deployment group create \
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| **adminPassword** | VM admin password (min 12 chars) | - |
-| **postgresPassword** | PostgreSQL superuser password | - |
-| **replicatorPassword** | PostgreSQL replication password | - |
-| **pgbouncerAdminPass** | PgBouncer admin password | - |
+| **adminPassword** | VM admin password (min 12 chars) | `AzurePatroni2024#` |
+| **postgresPassword** | PostgreSQL superuser password | `PostgreSQL2024#Strong` |
+| **replicatorPassword** | PostgreSQL replication password | `Replicator2024#Secure` |
+| **pgbouncerAdminPass** | PgBouncer admin password | `PgBouncer2024#Admin` |
 
 ### Configuration Parameters
 
@@ -124,6 +126,7 @@ az deployment group create \
 ```bash
 # SSH to database VM
 ssh azureuser@<VM_PUBLIC_IP>
+# Password: AzurePatroni2024#
 
 # Check cloud-init status
 cloud-init status --long
@@ -155,10 +158,10 @@ The test validates:
 
 ```bash
 # Connect via PgBouncer
-PGPASSWORD='<your-password>' psql -h 10.50.1.11 -p 6432 -U postgres -d postgres -c "SELECT now();"
+PGPASSWORD='PostgreSQL2024#Strong' psql -h 10.50.1.11 -p 6432 -U postgres -d postgres -c "SELECT now();"
 
 # Connect directly to database
-PGPASSWORD='<your-password>' psql -h 10.50.1.10 -p 5432 -U postgres -d postgres -c "SELECT version();"
+PGPASSWORD='PostgreSQL2024#Strong' psql -h 10.50.1.10 -p 5432 -U postgres -d postgres -c "SELECT version();"
 
 # Check Patroni status
 curl -s http://10.50.1.4:8008/cluster | jq
@@ -173,6 +176,7 @@ ETCDCTL_API=3 etcdctl --endpoints=http://10.50.1.4:2379,http://10.50.1.5:2379 me
 - **Network**: NSG rules limit access to VNet
 - **TLS**: Configurable (default: prefer)
 - **Firewall**: Only required ports open
+- **Safe Passwords**: No problematic special characters (`!` `$` `'` `"` avoided)
 
 ## 💡 Best Practices
 
@@ -203,10 +207,10 @@ ETCDCTL_API=3 etcdctl --endpoints=http://10.50.1.4:2379,http://10.50.1.5:2379 me
 curl http://<any-db-vm>:8008/cluster
 
 # PgBouncer stats
-PGPASSWORD='<password>' psql -h 10.50.1.11 -p 6432 -U postgres -d pgbouncer -c "SHOW POOLS;"
+PGPASSWORD='PostgreSQL2024#Strong' psql -h 10.50.1.11 -p 6432 -U postgres -d pgbouncer -c "SHOW POOLS;"
 
 # PostgreSQL replication
-PGPASSWORD='<password>' psql -h 10.50.1.10 -p 5432 -U postgres -c "SELECT * FROM pg_stat_replication;"
+PGPASSWORD='PostgreSQL2024#Strong' psql -h 10.50.1.10 -p 5432 -U postgres -c "SELECT * FROM pg_stat_replication;"
 ```
 
 ## 🆘 Troubleshooting

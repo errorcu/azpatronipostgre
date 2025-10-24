@@ -12,7 +12,7 @@
       "value": "azureuser" 
     },
     "adminPassword": { 
-      "value": "Azure@Patroni2024!" 
+      "value": "AzurePatroni2024#" 
     },
     "vmSize": { 
       "value": "Standard_D4s_v5" 
@@ -39,10 +39,10 @@
       "value": "10.50.1.10" 
     },
     "postgresPassword": { 
-      "value": "PostgreSQL@2024!" 
+      "value": "PostgreSQL2024#Strong" 
     },
     "replicatorPassword": { 
-      "value": "Replicator@2024!" 
+      "value": "Replicator2024#Secure" 
     },
     "enablePublicLB": { 
       "value": false 
@@ -63,7 +63,7 @@
       "value": "pgbouncer" 
     },
     "pgbouncerAdminPass": { 
-      "value": "PgBouncer@2024!" 
+      "value": "PgBouncer2024#Admin" 
     }
   }
 }
