@@ -43,17 +43,34 @@ runcmd:
   - |
     HOSTNAME=$(hostname -s)
     IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)
-    cat > /etc/default/etcd <<'ETCDEOF'
-ETCD_NAME="__HOSTNAME__"
-ETCD_INITIAL_CLUSTER="pgpatroni-1=http://10.50.1.4:2380,pgpatroni-2=http://10.50.1.5:2380"
+    
+    # Auto-detect etcd cluster size (2 or 3 nodes)
+    ETCD_CLUSTER="pgpatroni-1=http://10.50.1.4:2380,pgpatroni-2=http://10.50.1.5:2380"
+    ETCD_HOSTS="10.50.1.4:2379,10.50.1.5:2379"
+    
+    # Check if 3rd node exists (wait up to 30 seconds)
+    for i in {1..6}; do
+      if ping -c 1 -W 1 10.50.1.6 > /dev/null 2>&1; then
+        ETCD_CLUSTER="${ETCD_CLUSTER},pgpatroni-3=http://10.50.1.6:2380"
+        ETCD_HOSTS="${ETCD_HOSTS},10.50.1.6:2379"
+        echo "Detected 3-node cluster"
+        break
+      fi
+      sleep 5
+    done
+    
+    cat > /etc/default/etcd <<ETCDEOF
+ETCD_NAME="${HOSTNAME}"
+ETCD_INITIAL_CLUSTER="${ETCD_CLUSTER}"
 ETCD_INITIAL_CLUSTER_STATE="new"
-ETCD_INITIAL_ADVERTISE_PEER_URLS="http://__IP__:2380"
-ETCD_ADVERTISE_CLIENT_URLS="http://__IP__:2379"
-ETCD_LISTEN_PEER_URLS="http://__IP__:2380"
-ETCD_LISTEN_CLIENT_URLS="http://127.0.0.1:2379,http://__IP__:2379"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://${IP}:2380"
+ETCD_ADVERTISE_CLIENT_URLS="http://${IP}:2379"
+ETCD_LISTEN_PEER_URLS="http://${IP}:2380"
+ETCD_LISTEN_CLIENT_URLS="http://127.0.0.1:2379,http://${IP}:2379"
 ETCDEOF
-    sed -i "s/__HOSTNAME__/${HOSTNAME}/g" /etc/default/etcd
-    sed -i "s/__IP__/${IP}/g" /etc/default/etcd
+    
+    # Save etcd hosts for Patroni
+    echo "${ETCD_HOSTS}" > /tmp/etcd_hosts
   - systemctl stop postgresql || true
   - systemctl disable postgresql || true
   - systemctl enable etcd
@@ -64,15 +81,17 @@ ETCDEOF
   - |
     HOSTNAME=$(hostname -s)
     IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)
-    cat > /etc/patroni/patroni.yml <<'PATRONIEOF'
+    ETCD_HOSTS=$(cat /tmp/etcd_hosts)
+    
+    cat > /etc/patroni/patroni.yml <<PATRONIEOF
 scope: pg-ha
 namespace: /service/
-name: __HOSTNAME__
+name: ${HOSTNAME}
 restapi:
   listen: 0.0.0.0:8008
-  connect_address: __IP__:8008
+  connect_address: ${IP}:8008
 etcd:
-  hosts: 10.50.1.4:2379,10.50.1.5:2379
+  hosts: ${ETCD_HOSTS}
 bootstrap:
   dcs:
     ttl: 20
@@ -108,7 +127,7 @@ bootstrap:
         - replication
 postgresql:
   listen: 0.0.0.0:5432
-  connect_address: __IP__:5432
+  connect_address: ${IP}:5432
   data_dir: /pgdata
   bin_dir: /usr/lib/postgresql/16/bin
   parameters: {}
@@ -124,8 +143,6 @@ tags:
   noloadbalance: false
   clonefrom: false
 PATRONIEOF
-    sed -i "s/__HOSTNAME__/${HOSTNAME}/g" /etc/patroni/patroni.yml
-    sed -i "s/__IP__/${IP}/g" /etc/patroni/patroni.yml
   - chown postgres:postgres /etc/patroni/patroni.yml
   - |
     cat > /etc/systemd/system/patroni.service <<'SERVICEEOF'
