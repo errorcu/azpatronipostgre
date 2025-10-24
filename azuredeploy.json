@@ -5,15 +5,51 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "561180111488648998"
+      "templateHash": "3127071014116793869"
     }
   },
   "parameters": {
-    "location": {
+    "region": {
       "type": "string",
-      "defaultValue": "westeurope",
+      "defaultValue": "germanywestcentral",
+      "allowedValues": [
+        "germanywestcentral",
+        "westeurope",
+        "northeurope",
+        "eastus",
+        "westus2",
+        "centralus",
+        "eastus2",
+        "westus3",
+        "southeastasia",
+        "eastasia",
+        "japaneast",
+        "japanwest",
+        "australiaeast",
+        "australiasoutheast",
+        "canadacentral",
+        "canadaeast",
+        "uksouth",
+        "ukwest",
+        "francecentral",
+        "francesouth",
+        "switzerlandnorth",
+        "switzerlandwest",
+        "norwayeast",
+        "norwaywest",
+        "swedencentral",
+        "italynorth",
+        "spaincentral",
+        "polandcentral",
+        "southafricanorth",
+        "uaenorth",
+        "brazilsouth",
+        "centralindia",
+        "southindia",
+        "westindia"
+      ],
       "metadata": {
-        "description": "Location for all resources"
+        "description": "Azure region for deployment"
       }
     },
     "prefix": {
@@ -209,7 +245,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "vnetName": {
             "value": "[variables('vnetName')]"
@@ -313,7 +349,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "nsgName": {
             "value": "[variables('nsgName')]"
@@ -440,7 +476,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "lbName": {
             "value": "[variables('ilbName')]"
@@ -674,7 +710,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "lbName": {
             "value": "[variables('elbName')]"
@@ -911,7 +947,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "lbName": {
             "value": "[variables('pgbIlbName')]"
@@ -1153,7 +1189,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "vmNames": {
             "value": "[variables('vmNames')]"
@@ -1444,7 +1480,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('region')]"
           },
           "vmNames": {
             "value": "[variables('pgbVmNames')]"
@@ -1735,6 +1771,10 @@
     "diskSkuUsed": {
       "type": "string",
       "value": "[parameters('diskSku')]"
+    },
+    "deployedRegion": {
+      "type": "string",
+      "value": "[parameters('region')]"
     }
   }
 }

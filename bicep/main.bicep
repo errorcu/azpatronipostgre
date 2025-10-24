@@ -1,5 +1,41 @@
-@description('Location for all resources')
-param location string = 'westeurope'
+@description('Azure region for deployment')
+@allowed([
+  'germanywestcentral'
+  'westeurope'
+  'northeurope'
+  'eastus'
+  'westus2'
+  'centralus'
+  'eastus2'
+  'westus3'
+  'southeastasia'
+  'eastasia'
+  'japaneast'
+  'japanwest'
+  'australiaeast'
+  'australiasoutheast'
+  'canadacentral'
+  'canadaeast'
+  'uksouth'
+  'ukwest'
+  'francecentral'
+  'francesouth'
+  'switzerlandnorth'
+  'switzerlandwest'
+  'norwayeast'
+  'norwaywest'
+  'swedencentral'
+  'italynorth'
+  'spaincentral'
+  'polandcentral'
+  'southafricanorth'
+  'uaenorth'
+  'brazilsouth'
+  'centralindia'
+  'southindia'
+  'westindia'
+])
+param region string = 'germanywestcentral'
 
 @description('Prefix for resource naming')
 param prefix string = 'pgpatroni'
@@ -130,7 +166,7 @@ var pgbZones = ['1', '2']
 module vnet 'modules/vnet.bicep' = {
   name: 'vnet-deployment'
   params: {
-    location: location
+    location: region
     vnetName: vnetName
     subnetName: subnetName
     addressPrefix: addressPrefix
@@ -141,7 +177,7 @@ module vnet 'modules/vnet.bicep' = {
 module nsg 'modules/nsg.bicep' = {
   name: 'nsg-deployment'
   params: {
-    location: location
+    location: region
     nsgName: nsgName
   }
 }
@@ -149,7 +185,7 @@ module nsg 'modules/nsg.bicep' = {
 module ilb 'modules/lb.bicep' = {
   name: 'ilb-deployment'
   params: {
-    location: location
+    location: region
     lbName: ilbName
     lbPrivateIP: lbPrivateIP
     vnetName: vnetName
@@ -167,7 +203,7 @@ module ilb 'modules/lb.bicep' = {
 module elb 'modules/lb.bicep' = if (enablePublicLB) {
   name: 'elb-deployment'
   params: {
-    location: location
+    location: region
     lbName: elbName
     lbPrivateIP: lbPrivateIP
     vnetName: vnetName
@@ -186,7 +222,7 @@ module elb 'modules/lb.bicep' = if (enablePublicLB) {
 module pgbIlb 'modules/lb.bicep' = if (enablePgBouncerTier) {
   name: 'pgb-ilb-deployment'
   params: {
-    location: location
+    location: region
     lbName: pgbIlbName
     lbPrivateIP: pgbouncerLbPrivateIP
     vnetName: vnetName
@@ -207,7 +243,7 @@ module pgbIlb 'modules/lb.bicep' = if (enablePgBouncerTier) {
 module vm 'modules/vm.bicep' = {
   name: 'vm-deployment'
   params: {
-    location: location
+    location: region
     vmNames: vmNames
     vmIps: vmIps
     zones: zones
@@ -235,7 +271,7 @@ module vm 'modules/vm.bicep' = {
 module pgbVm 'modules/pgbouncer-vm.bicep' = if (enablePgBouncerTier) {
   name: 'pgb-vm-deployment'
   params: {
-    location: location
+    location: region
     vmNames: pgbVmNames
     vmIps: pgbVmIps
     zones: pgbZones
@@ -266,3 +302,4 @@ output elbIP string = enablePublicLB ? elb.outputs.lbPublicIP : 'disabled'
 output pgbIlbIP string = enablePgBouncerTier ? pgbIlb.outputs.lbPrivateIP : 'disabled'
 output numberOfNodesDeployed int = numberOfNodes
 output diskSkuUsed string = diskSku
+output deployedRegion string = region
