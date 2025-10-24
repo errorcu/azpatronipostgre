@@ -116,6 +116,8 @@ param pgbouncerAdminPass string = 'PgBouncer2024#Admin'
 var vnetName = '${prefix}-vnet'
 var subnetName = 'db'
 var nsgName = '${prefix}-nsg'
+var natGatewayName = '${prefix}-nat'
+var natPublicIPName = '${prefix}-nat-pip'
 var ilbName = '${prefix}-ilb'
 var elbName = '${prefix}-elb'
 var pgbIlbName = '${prefix}-pgb-ilb'
@@ -163,6 +165,15 @@ var pgbVmIps = ['10.50.1.7', '10.50.1.8']
 var pgbZones = ['1', '2']
 
 // Modules
+module natGateway 'modules/nat-gateway.bicep' = {
+  name: 'nat-gateway-deployment'
+  params: {
+    location: region
+    natGatewayName: natGatewayName
+    natPublicIPName: natPublicIPName
+  }
+}
+
 module vnet 'modules/vnet.bicep' = {
   name: 'vnet-deployment'
   params: {
@@ -171,7 +182,11 @@ module vnet 'modules/vnet.bicep' = {
     subnetName: subnetName
     addressPrefix: addressPrefix
     subnetPrefix: subnetPrefix
+    natGatewayId: natGateway.outputs.natGatewayId
   }
+  dependsOn: [
+    natGateway
+  ]
 }
 
 module nsg 'modules/nsg.bicep' = {
@@ -303,3 +318,4 @@ output pgbIlbIP string = enablePgBouncerTier ? pgbIlb.outputs.lbPrivateIP : 'dis
 output numberOfNodesDeployed int = numberOfNodes
 output diskSkuUsed string = diskSku
 output deployedRegion string = region
+output natGatewayPublicIP string = natGateway.outputs.natPublicIP

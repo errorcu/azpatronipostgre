@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "3127071014116793869"
+      "templateHash": "11539763573231799984"
     }
   },
   "parameters": {
@@ -208,6 +208,8 @@
     "vnetName": "[format('{0}-vnet', parameters('prefix'))]",
     "subnetName": "db",
     "nsgName": "[format('{0}-nsg', parameters('prefix'))]",
+    "natGatewayName": "[format('{0}-nat', parameters('prefix'))]",
+    "natPublicIPName": "[format('{0}-nat-pip', parameters('prefix'))]",
     "ilbName": "[format('{0}-ilb', parameters('prefix'))]",
     "elbName": "[format('{0}-elb', parameters('prefix'))]",
     "pgbIlbName": "[format('{0}-pgb-ilb', parameters('prefix'))]",
@@ -237,6 +239,103 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
+      "name": "nat-gateway-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "natGatewayName": {
+            "value": "[variables('natGatewayName')]"
+          },
+          "natPublicIPName": {
+            "value": "[variables('natPublicIPName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "1373485975640523528"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "natGatewayName": {
+              "type": "string",
+              "metadata": {
+                "description": "NAT Gateway name"
+              }
+            },
+            "natPublicIPName": {
+              "type": "string",
+              "metadata": {
+                "description": "Public IP name for NAT Gateway"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('natPublicIPName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/natGateways",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('natGatewayName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIpAddresses": [
+                  {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('natPublicIPName'))]"
+                  }
+                ],
+                "idleTimeoutInMinutes": 10
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('natPublicIPName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "natGatewayId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/natGateways', parameters('natGatewayName'))]"
+            },
+            "natPublicIP": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('natPublicIPName')), '2023-11-01').ipAddress]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
       "name": "vnet-deployment",
       "properties": {
         "expressionEvaluationOptions": {
@@ -258,6 +357,9 @@
           },
           "subnetPrefix": {
             "value": "[parameters('subnetPrefix')]"
+          },
+          "natGatewayId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'nat-gateway-deployment'), '2022-09-01').outputs.natGatewayId.value]"
           }
         },
         "template": {
@@ -267,7 +369,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "10087534649168850311"
+              "templateHash": "10806632473374277172"
             }
           },
           "parameters": {
@@ -300,6 +402,13 @@
               "metadata": {
                 "description": "Subnet address prefix"
               }
+            },
+            "natGatewayId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "NAT Gateway ID (optional)"
+              }
             }
           },
           "resources": [
@@ -318,7 +427,8 @@
                   {
                     "name": "[parameters('subnetName')]",
                     "properties": {
-                      "addressPrefix": "[parameters('subnetPrefix')]"
+                      "addressPrefix": "[parameters('subnetPrefix')]",
+                      "natGateway": "[if(not(empty(parameters('natGatewayId'))), createObject('id', parameters('natGatewayId')), null())]"
                     }
                   }
                 ]
@@ -336,7 +446,10 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'nat-gateway-deployment')]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
@@ -1775,6 +1888,10 @@
     "deployedRegion": {
       "type": "string",
       "value": "[parameters('region')]"
+    },
+    "natGatewayPublicIP": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'nat-gateway-deployment'), '2022-09-01').outputs.natPublicIP.value]"
     }
   }
 }
