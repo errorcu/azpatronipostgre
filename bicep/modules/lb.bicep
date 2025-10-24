@@ -49,7 +49,7 @@ resource subnet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing 
   parent: vnet
 }
 
-resource publicIP 'Microsoft.Network/publicIPAddresses@2023-11-01' = {
+resource publicIP 'Microsoft.Network/publicIPAddresses@2023-11-01' = if (isPublic) {
   name: '${lbName}-pip'
   location: location
   sku: {
@@ -58,7 +58,6 @@ resource publicIP 'Microsoft.Network/publicIPAddresses@2023-11-01' = {
   properties: {
     publicIPAllocationMethod: 'Static'
   }
-  condition: isPublic
 }
 
 resource lb 'Microsoft.Network/loadBalancers@2023-11-01' = {
@@ -95,7 +94,7 @@ resource lb 'Microsoft.Network/loadBalancers@2023-11-01' = {
         properties: {
           protocol: probeProtocol
           port: probePort
-          requestPath: probeProtocol == 'Http' ? probeRequestPath : ''
+          requestPath: probeProtocol == 'Http' ? probeRequestPath : null
           intervalInSeconds: 5
           numberOfProbes: 2
         }
@@ -106,10 +105,10 @@ resource lb 'Microsoft.Network/loadBalancers@2023-11-01' = {
         name: lbruleName
         properties: {
           frontendIPConfiguration: {
-            id: '${lb.id}/frontendIPConfigurations/fe'
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, 'fe')
           }
           backendAddressPool: {
-            id: '${lb.id}/backendAddressPools/${bePoolName}'
+            id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, bePoolName)
           }
           protocol: 'Tcp'
           frontendPort: port
@@ -117,14 +116,17 @@ resource lb 'Microsoft.Network/loadBalancers@2023-11-01' = {
           enableFloatingIP: false
           idleTimeoutInMinutes: 30
           probe: {
-            id: '${lb.id}/probes/${probeName}'
+            id: resourceId('Microsoft.Network/loadBalancers/probes', lbName, probeName)
           }
         }
       }
     ]
   }
+  dependsOn: [
+    publicIP
+  ]
 }
 
 output lbId string = lb.id
-output lbPrivateIP string = lb.properties.frontendIPConfigurations[0].properties.privateIPAddress
+output lbPrivateIP string = isPublic ? '' : lb.properties.frontendIPConfigurations[0].properties.privateIPAddress
 output lbPublicIP string = isPublic ? publicIP.properties.ipAddress : ''

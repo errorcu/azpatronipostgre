@@ -7,11 +7,19 @@ param prefix string = 'pgpatroni'
 @description('Admin username for VMs')
 param adminUsername string
 
-@description('SSH public key for admin user')
-param adminSshPubKey string
+@description('Admin password for VMs')
+@secure()
+param adminPassword string
 
 @description('VM size for database nodes')
 param vmSize string = 'Standard_D4s_v5'
+
+@description('Number of database nodes')
+@allowed([
+  2
+  3
+])
+param numberOfNodes int = 2
 
 @description('Data disk size in GB')
 param dataDiskSizeGB int = 1024
@@ -19,14 +27,21 @@ param dataDiskSizeGB int = 1024
 @description('WAL disk size in GB')
 param walDiskSizeGB int = 512
 
+@description('Managed disk SKU')
+@allowed([
+  'Premium_LRS'
+  'Premium_ZRS'
+  'StandardSSD_LRS'
+  'StandardSSD_ZRS'
+  'UltraSSD_LRS'
+])
+param diskSku string = 'Premium_LRS'
+
 @description('VNet address prefix')
 param addressPrefix string = '10.50.0.0/16'
 
 @description('Subnet address prefix')
 param subnetPrefix string = '10.50.1.0/24'
-
-@description('Availability zones')
-param zones array = ['1', '2', '3']
 
 @description('Load balancer private IP')
 param lbPrivateIP string = '10.50.1.10'
@@ -74,17 +89,42 @@ var probeName = 'patroniProbe'
 var pgbProbeName = 'pgbProbe'
 var lbruleName = 'pg'
 var pgbRuleName = 'pgb'
-var vmNames = [
+
+// Dynamic VM configuration based on number of nodes
+var vmNames = numberOfNodes == 2 ? [
+  '${prefix}-1'
+  '${prefix}-2'
+] : [
   '${prefix}-1'
   '${prefix}-2'
   '${prefix}-3'
 ]
-var vmIps = ['10.50.1.4', '10.50.1.5', '10.50.1.6']
+
+var vmIps = numberOfNodes == 2 ? [
+  '10.50.1.4'
+  '10.50.1.5'
+] : [
+  '10.50.1.4'
+  '10.50.1.5'
+  '10.50.1.6'
+]
+
+var zones = numberOfNodes == 2 ? [
+  '1'
+  '2'
+] : [
+  '1'
+  '2'
+  '3'
+]
+
 var pgbVmNames = [
   '${prefix}-pgb-1'
   '${prefix}-pgb-2'
 ]
+
 var pgbVmIps = ['10.50.1.7', '10.50.1.8']
+var pgbZones = ['1', '2']
 
 // Modules
 module vnet 'modules/vnet.bicep' = {
@@ -119,9 +159,12 @@ module ilb 'modules/lb.bicep' = {
     lbruleName: lbruleName
     isPublic: false
   }
+  dependsOn: [
+    vnet
+  ]
 }
 
-module elb 'modules/lb.bicep' = {
+module elb 'modules/lb.bicep' = if (enablePublicLB) {
   name: 'elb-deployment'
   params: {
     location: location
@@ -135,10 +178,12 @@ module elb 'modules/lb.bicep' = {
     isPublic: true
     prefix: prefix
   }
-  condition: enablePublicLB
+  dependsOn: [
+    vnet
+  ]
 }
 
-module pgbIlb 'modules/lb.bicep' = {
+module pgbIlb 'modules/lb.bicep' = if (enablePgBouncerTier) {
   name: 'pgb-ilb-deployment'
   params: {
     location: location
@@ -154,7 +199,9 @@ module pgbIlb 'modules/lb.bicep' = {
     probePort: 6432
     probeProtocol: 'Tcp'
   }
-  condition: enablePgBouncerTier
+  dependsOn: [
+    vnet
+  ]
 }
 
 module vm 'modules/vm.bicep' = {
@@ -167,8 +214,9 @@ module vm 'modules/vm.bicep' = {
     vmSize: vmSize
     dataDiskSizeGB: dataDiskSizeGB
     walDiskSizeGB: walDiskSizeGB
+    diskSku: diskSku
     adminUsername: adminUsername
-    adminSshPubKey: adminSshPubKey
+    adminPassword: adminPassword
     vnetName: vnetName
     subnetName: subnetName
     nsgName: nsgName
@@ -177,18 +225,23 @@ module vm 'modules/vm.bicep' = {
     postgresPassword: postgresPassword
     replicatorPassword: replicatorPassword
   }
+  dependsOn: [
+    vnet
+    nsg
+    ilb
+  ]
 }
 
-module pgbVm 'modules/pgbouncer-vm.bicep' = {
+module pgbVm 'modules/pgbouncer-vm.bicep' = if (enablePgBouncerTier) {
   name: 'pgb-vm-deployment'
   params: {
     location: location
     vmNames: pgbVmNames
     vmIps: pgbVmIps
-    zones: zones
+    zones: pgbZones
     vmSize: 'Standard_D2s_v5'
     adminUsername: adminUsername
-    adminSshPubKey: adminSshPubKey
+    adminPassword: adminPassword
     vnetName: vnetName
     subnetName: subnetName
     nsgName: nsgName
@@ -200,10 +253,16 @@ module pgbVm 'modules/pgbouncer-vm.bicep' = {
     pgbouncerDefaultPool: pgbouncerDefaultPool
     pgbouncerMaxClientConn: pgbouncerMaxClientConn
   }
-  condition: enablePgBouncerTier
+  dependsOn: [
+    vnet
+    nsg
+    pgbIlb
+  ]
 }
 
 // Outputs
 output dbIlbIP string = ilb.outputs.lbPrivateIP
 output elbIP string = enablePublicLB ? elb.outputs.lbPublicIP : 'disabled'
 output pgbIlbIP string = enablePgBouncerTier ? pgbIlb.outputs.lbPrivateIP : 'disabled'
+output numberOfNodesDeployed int = numberOfNodes
+output diskSkuUsed string = diskSku

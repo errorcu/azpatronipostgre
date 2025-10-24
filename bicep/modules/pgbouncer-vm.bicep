@@ -16,8 +16,9 @@ param vmSize string
 @description('Admin username')
 param adminUsername string
 
-@description('SSH public key')
-param adminSshPubKey string
+@description('Admin password')
+@secure()
+param adminPassword string
 
 @description('VNet name')
 param vnetName string
@@ -72,8 +73,8 @@ resource backendPool 'Microsoft.Network/loadBalancers/backendAddressPools@2023-1
   parent: lb
 }
 
-resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = [for i in range(length(vmNames)): {
-  name: '${vmNames[i]}-nic'
+resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = [for (vmName, i) in vmNames: {
+  name: '${vmName}-nic'
   location: location
   properties: {
     ipConfigurations: [
@@ -99,8 +100,8 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = [for i in range(
   }
 }]
 
-resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for i in range(length(vmNames)): {
-  name: vmNames[i]
+resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for (vmName, i) in vmNames: {
+  name: vmName
   location: location
   zones: [zones[i]]
   properties: {
@@ -108,20 +109,13 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for i in range(len
       vmSize: vmSize
     }
     osProfile: {
-      computerName: vmNames[i]
+      computerName: vmName
       adminUsername: adminUsername
+      adminPassword: adminPassword
       linuxConfiguration: {
-        disablePasswordAuthentication: true
-        ssh: {
-          publicKeys: [
-            {
-              path: '/home/${adminUsername}/.ssh/authorized_keys'
-              keyData: adminSshPubKey
-            }
-          ]
-        }
+        disablePasswordAuthentication: false
       }
-      customData: base64(loadFileContent('cloudinit/pgbouncer-cloud-init.yaml'))
+      customData: base64(loadTextContent('cloudinit/pgbouncer-cloud-init.yaml'))
     }
     storageProfile: {
       imageReference: {
@@ -145,6 +139,9 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for i in range(len
       ]
     }
   }
+  dependsOn: [
+    nic
+  ]
 }]
 
-output vmIds array = [for i in range(length(vmNames)): vm[i].id]
+output vmIds array = [for (vmName, i) in vmNames: vm[i].id]

@@ -1,91 +1,225 @@
 # Azure Patroni HA PostgreSQL
 
-Azure Patroni HA, Active-Passive with ILB and optional ELB, plus PgBouncer tier
+Production-ready PostgreSQL High Availability cluster on Azure with Patroni, etcd, and PgBouncer.
 
-## Deploy to Azure button
+## 🚀 Deploy to Azure
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgokhansalihyenigun%2Fazure-patroni-ha%2Fmain%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ferrorcu%2Fazpatronipostgre%2Fmain%2Fazuredeploy.json)
 
-## What you get
+**One-click deployment** - No manual configuration required!
 
-- **Fully automated deployment** - Single-click deployment, no manual configuration required
-- **DB tier** - 2 or 3 Patroni nodes (configurable), ILB 5432, probe HTTP 8008 path /primary
-- **Patroni manages PostgreSQL** - No rsync, Patroni initializes cluster from scratch
-- **Optional ELB** - 5432 for controlled external access
-- **PgBouncer tier** - 2 VMs across zones, ILB 6432, probe TCP 6432, pool_mode transaction
-- **Flexible disk SKU** - Premium_LRS, Premium_ZRS, StandardSSD_LRS, StandardSSD_ZRS, UltraSSD_LRS
-- **NSG rules** - Scoped to VNet
-- **NAT Gateway** - For outbound internet access (package installations)
-- **Azure Monitor** - Agent ready
+## ✨ What You Get
 
-## Parameters
+- **🔄 Automated Deployment** - Click button, fill parameters, deploy!
+- **💾 Database Tier** - 2 or 3 Patroni PostgreSQL nodes (configurable)
+- **🔁 High Availability** - Automatic failover with Patroni + etcd
+- **🌐 Connection Pooling** - PgBouncer tier (optional, enabled by default)
+- **⚖️ Load Balancers** - Internal LB for DB (5432) and PgBouncer (6432)
+- **🌍 Public Access** - Optional external load balancer
+- **💿 Flexible Storage** - Choose disk SKU (Premium_LRS, Premium_ZRS, StandardSSD_LRS, etc.)
+- **🏢 Multi-Zone** - Deployment across availability zones
+- **🔒 Security** - Password authentication, NSG rules, private network
+- **🌐 NAT Gateway** - For outbound internet access (package installations)
 
-- **region**: Azure region (dropdown selection, default: Germany West Central)
-- **prefix**: Resource name prefix (default: pgpatroni)
-- **adminUsername**: VM admin username (default: azureuser)
-- **adminPassword**: VM admin password (default: Azure123!@#)
-- **vmSize**: Database VM size (dropdown, default: Standard_D4s_v5)
-- **numberOfNodes**: Number of database nodes - 2 or 3 (default: 2)
-- **dataDiskSizeGB**: Data disk size in GB (default: 1024)
-- **walDiskSizeGB**: WAL disk size in GB (default: 512)
-- **diskSku**: Managed disk SKU (dropdown, default: Premium_LRS)
-- **addressPrefix**: VNet address prefix (default: 10.50.0.0/16)
-- **subnetPrefix**: Subnet address prefix (default: 10.50.1.0/24)
-- **lbPrivateIP**: Database load balancer private IP (default: 10.50.1.10)
-- **postgresPassword**: PostgreSQL superuser password (default: ChangeMe123Pass)
-- **replicatorPassword**: PostgreSQL replicator password (default: ChangeMe123Pass)
-- **enablePublicLB**: Enable public load balancer (default: false)
-- **enablePgBouncerTier**: Enable PgBouncer tier (default: true)
-- **pgbouncerLbPrivateIP**: PgBouncer load balancer private IP (default: 10.50.1.11)
-- **pgbouncerDefaultPool**: PgBouncer default pool size (default: 200)
-- **pgbouncerMaxClientConn**: PgBouncer max client connections (default: 2000)
-- **pgbouncerAdminUser**: PgBouncer admin user (default: pgbouncer)
-- **pgbouncerAdminPass**: PgBouncer admin password (default: StrongPass123)
+## 📋 Deployment Parameters
 
-## How to deploy
+### Required Parameters
 
-- Click the button
-- Set parameters
-- Create
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **adminPassword** | VM admin password (min 12 chars) | - |
+| **postgresPassword** | PostgreSQL superuser password | - |
+| **replicatorPassword** | PostgreSQL replication password | - |
+| **pgbouncerAdminPass** | PgBouncer admin password | - |
 
-## Connection
+### Configuration Parameters
 
-- Apps connect to PgBouncer ILB 6432
-- Admin, ETL, replication connect to DB ILB 5432
+| Parameter | Options | Default | Description |
+|-----------|---------|---------|-------------|
+| **region** | 35+ Azure regions | Germany West Central | Deployment region |
+| **prefix** | string | pgpatroni | Resource name prefix |
+| **adminUsername** | string | azureuser | VM admin username |
+| **vmSize** | D2s_v5 - E16s_v5 | Standard_D4s_v5 | Database VM size |
+| **numberOfNodes** | 2 or 3 | 2 | Number of database nodes |
+| **dataDiskSizeGB** | 128-32767 | 1024 | Data disk size in GB |
+| **walDiskSizeGB** | 128-32767 | 512 | WAL disk size in GB |
+| **diskSku** | Premium_LRS, Premium_ZRS, StandardSSD_LRS, StandardSSD_ZRS, UltraSSD_LRS | Premium_LRS | Managed disk SKU |
+| **enablePublicLB** | true/false | false | Enable public load balancer |
+| **enablePgBouncerTier** | true/false | true | Enable PgBouncer tier |
+| **pgbouncerDefaultPool** | 10-1000 | 200 | Pool size per database |
+| **pgbouncerMaxClientConn** | 100-10000 | 2000 | Max client connections |
 
-## Automated Testing
+## 🏗️ Architecture
 
-After deployment, SSH into any database VM and run the comprehensive test suite:
+```
+┌─────────────────────────────────────────────────┐
+│              Azure Cloud                        │
+│                                                 │
+│  ┌───────────────┐     ┌──────────────────┐   │
+│  │ Public LB     │     │ PgBouncer ILB    │   │
+│  │ (Optional)    │     │ 10.50.1.11:6432  │   │
+│  │ 5432          │     └────────┬─────────┘   │
+│  └───────┬───────┘              │             │
+│          │         ┌────────────┴─────────┐   │
+│          │         │   PgBouncer VMs      │   │
+│          │         │   Zone 1, 2          │   │
+│          │         └────────┬─────────────┘   │
+│          │                  │                 │
+│  ┌───────┴──────┐  ┌────────┴──────────┐     │
+│  │ Database ILB │  │                   │     │
+│  │ 10.50.1.10   │◄─┘                   │     │
+│  │ 5432         │                      │     │
+│  └───────┬──────┘                      │     │
+│          │                             │     │
+│  ┌───────┴─────────────────────────┐   │     │
+│  │  PostgreSQL + Patroni + etcd    │   │     │
+│  │  ┌──────┐  ┌──────┐  ┌──────┐  │   │     │
+│  │  │Node 1│  │Node 2│  │Node 3│  │   │     │
+│  │  │Zone 1│  │Zone 2│  │Zone 3│  │   │     │
+│  │  └───┬──┘  └───┬──┘  └───┬──┘  │   │     │
+│  │      │         │         │      │   │     │
+│  │  ┌───▼─────────▼─────────▼───┐  │   │     │
+│  │  │  Replication + etcd sync  │  │   │     │
+│  │  └───────────────────────────┘  │   │     │
+│  └─────────────────────────────────┘   │     │
+│                                         │     │
+│  ┌─────────────────────────────────┐   │     │
+│  │  Premium SSD Disks              │   │     │
+│  │  Data: 1TB  |  WAL: 512GB       │   │     │
+│  └─────────────────────────────────┘   │     │
+└─────────────────────────────────────────┘
+```
+
+## 🎯 Connection Points
+
+- **Applications** → PgBouncer ILB: `10.50.1.11:6432`
+- **Admin/ETL** → Database ILB: `10.50.1.10:5432`
+- **External** → Public LB: `<public-ip>:5432` (if enabled)
+
+## 📝 Post-Deployment
+
+### 1. Access VMs
 
 ```bash
-# Download and run the test script
-curl -o test.sh https://raw.githubusercontent.com/gokhansalihyenigun/azure-patroni-ha/main/scripts/test-deployment.sh
+# SSH to database VM
+ssh azureuser@<VM_PUBLIC_IP>
+
+# Check cloud-init status
+cloud-init status --long
+
+# Check Patroni cluster
+curl http://localhost:8008/cluster | jq
+```
+
+### 2. Automated Testing
+
+```bash
+# Download and run comprehensive test suite
+curl -o test.sh https://raw.githubusercontent.com/errorcu/azpatronipostgre/main/scripts/test-deployment.sh
 chmod +x test.sh
 sudo ./test.sh
 ```
 
-The test script validates:
-- ✅ VM connectivity (DB + PgBouncer)
-- ✅ Patroni cluster health (leader + replicas)
-- ✅ PostgreSQL connections (direct + Load Balancer)
+The test validates:
+- ✅ VM connectivity
+- ✅ Patroni cluster health
+- ✅ PostgreSQL connections
 - ✅ PgBouncer functionality
-- ✅ Replication status and lag
-- ✅ etcd cluster health
-- ✅ High availability configuration
+- ✅ Replication status
+- ✅ etcd cluster
+- ✅ Load balancer routing
 - ✅ Performance benchmarks
 
-## Manual Checks
+### 3. Manual Verification
 
 ```bash
 # Connect via PgBouncer
-PGPASSWORD='ChangeMe123Pass' psql -h 10.50.1.11 -p 6432 -U postgres -d postgres -c "SELECT now();"
+PGPASSWORD='<your-password>' psql -h 10.50.1.11 -p 6432 -U postgres -d postgres -c "SELECT now();"
 
 # Connect directly to database
-PGPASSWORD='ChangeMe123Pass' psql -h 10.50.1.10 -p 5432 -U postgres -d postgres -c "SELECT version();"
+PGPASSWORD='<your-password>' psql -h 10.50.1.10 -p 5432 -U postgres -d postgres -c "SELECT version();"
 
-# Check Patroni cluster status
+# Check Patroni status
 curl -s http://10.50.1.4:8008/cluster | jq
 
 # Check etcd cluster
 ETCDCTL_API=3 etcdctl --endpoints=http://10.50.1.4:2379,http://10.50.1.5:2379 member list
 ```
+
+## 🔒 Security
+
+- **Authentication**: Password-based (change default passwords!)
+- **Network**: NSG rules limit access to VNet
+- **TLS**: Configurable (default: prefer)
+- **Firewall**: Only required ports open
+
+## 💡 Best Practices
+
+1. **Change Passwords**: Update all default passwords after deployment
+2. **Disk SKU**: Use Premium_LRS or Premium_ZRS for production
+3. **VM Size**: Choose based on workload (D4s_v5 recommended minimum)
+4. **Node Count**: Use 3 nodes for maximum availability
+5. **Monitoring**: Enable Azure Monitor and set up alerts
+6. **Backups**: Configure automated backups for data protection
+
+## 🔧 Customization
+
+### Change Node Count (2 or 3)
+- **2 nodes**: Zones 1 and 2 (cost-effective)
+- **3 nodes**: Zones 1, 2, and 3 (maximum HA)
+
+### Disk SKU Options
+- **Premium_LRS**: Best performance, locally redundant
+- **Premium_ZRS**: Zone-redundant for HA
+- **StandardSSD_LRS**: Cost-effective
+- **StandardSSD_ZRS**: Zone-redundant SSD
+- **UltraSSD_LRS**: Ultra-high performance (specific regions)
+
+## 📊 Monitoring
+
+```bash
+# Patroni cluster status
+curl http://<any-db-vm>:8008/cluster
+
+# PgBouncer stats
+PGPASSWORD='<password>' psql -h 10.50.1.11 -p 6432 -U postgres -d pgbouncer -c "SHOW POOLS;"
+
+# PostgreSQL replication
+PGPASSWORD='<password>' psql -h 10.50.1.10 -p 5432 -U postgres -c "SELECT * FROM pg_stat_replication;"
+```
+
+## 🆘 Troubleshooting
+
+```bash
+# Check services
+systemctl status patroni
+systemctl status etcd
+systemctl status pgbouncer
+
+# View logs
+journalctl -u patroni -f
+journalctl -u etcd -f
+journalctl -u pgbouncer -f
+
+# Cloud-init logs
+cat /var/log/cloud-init-output.log
+```
+
+## 📚 Documentation
+
+- [Patroni Documentation](https://patroni.readthedocs.io/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [PgBouncer Documentation](https://www.pgbouncer.org/)
+- [etcd Documentation](https://etcd.io/docs/)
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) file
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or submit a pull request.
+
+## 🎉 Credits
+
+Built with ❤️ for production PostgreSQL on Azure
