@@ -5,11 +5,11 @@ param location string = 'westeurope'
 param prefix string = 'pgpatroni'
 
 @description('Admin username for VMs')
-param adminUsername string
+param adminUsername string = 'azureuser'
 
 @description('Admin password for VMs')
 @secure()
-param adminPassword string
+param adminPassword string = 'Azure@Patroni2024!'
 
 @description('VM size for database nodes')
 param vmSize string = 'Standard_D4s_v5'
@@ -48,11 +48,11 @@ param lbPrivateIP string = '10.50.1.10'
 
 @description('PostgreSQL password')
 @secure()
-param postgresPassword string
+param postgresPassword string = 'PostgreSQL@2024!'
 
 @description('Replicator password')
 @secure()
-param replicatorPassword string
+param replicatorPassword string = 'Replicator@2024!'
 
 @description('Enable public load balancer')
 param enablePublicLB bool = false
@@ -74,7 +74,7 @@ param pgbouncerAdminUser string = 'pgbouncer'
 
 @description('PgBouncer admin password')
 @secure()
-param pgbouncerAdminPass string
+param pgbouncerAdminPass string = 'PgBouncer@2024!'
 
 // Variables
 var vnetName = '${prefix}-vnet'

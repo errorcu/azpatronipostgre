@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "10258491604782550743"
+      "templateHash": "11293436993302279307"
     }
   },
   "parameters": {
@@ -25,12 +25,14 @@
     },
     "adminUsername": {
       "type": "string",
+      "defaultValue": "azureuser",
       "metadata": {
         "description": "Admin username for VMs"
       }
     },
     "adminPassword": {
       "type": "securestring",
+      "defaultValue": "Azure@Patroni2024!",
       "metadata": {
         "description": "Admin password for VMs"
       }
@@ -104,12 +106,14 @@
     },
     "postgresPassword": {
       "type": "securestring",
+      "defaultValue": "PostgreSQL@2024!",
       "metadata": {
         "description": "PostgreSQL password"
       }
     },
     "replicatorPassword": {
       "type": "securestring",
+      "defaultValue": "Replicator@2024!",
       "metadata": {
         "description": "Replicator password"
       }
@@ -158,6 +162,7 @@
     },
     "pgbouncerAdminPass": {
       "type": "securestring",
+      "defaultValue": "PgBouncer@2024!",
       "metadata": {
         "description": "PgBouncer admin password"
       }
