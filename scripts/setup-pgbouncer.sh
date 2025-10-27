@@ -40,6 +40,8 @@ cat > /etc/pgbouncer/userlist.txt <<EOF
 "pgbouncer" "StrongPass123!"
 EOF
 
+# NOTE: Change the password above to match your deployment's pgbouncerAdminPass parameter
+
 chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt
 chmod 640 /etc/pgbouncer/userlist.txt
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Simple Patroni Setup Script - Guaranteed to work!
+set -e  # Exit on error
 set -x  # Debug mode
 
 echo "=== Starting Patroni Setup ==="
@@ -51,8 +52,17 @@ fi
 
 # Stop PostgreSQL and move data
 systemctl stop postgresql
-rsync -a /var/lib/postgresql/16/main/ /pgdata/ || true
-chown -R postgres:postgres /pgdata /pgwal
+# Copy PostgreSQL data if source exists, using || true to allow script to continue if copy fails
+if [ -d "/var/lib/postgresql/16/main/" ]; then
+    rsync -a /var/lib/postgresql/16/main/ /pgdata/ || true
+fi
+# Ensure proper permissions regardless of whether rsync succeeded
+if [ -d "/pgdata" ]; then
+    chown -R postgres:postgres /pgdata
+fi
+if [ -d "/pgwal" ]; then
+    chown -R postgres:postgres /pgwal
+fi
 sed -i "s|^data_directory = .*|data_directory = '/pgdata'|" /etc/postgresql/16/main/postgresql.conf
 
 # Get hostname and IP
@@ -122,7 +132,7 @@ bootstrap:
     - host all all 10.50.0.0/16 md5
   users:
     replicator:
-      password: ChangeMe123!
+      password: ChangeMe123!  # CHANGE THIS to match your deployment parameters
       options:
         - replication
 postgresql:
@@ -134,10 +144,10 @@ postgresql:
   authentication:
     superuser:
       username: postgres
-      password: ChangeMe123!
+      password: ChangeMe123!  # CHANGE THIS to match your deployment parameters
     replication:
       username: replicator
-      password: ChangeMe123!
+      password: ChangeMe123!  # CHANGE THIS to match your deployment parameters
 tags:
   nofailover: false
   noloadbalance: false
