@@ -31,7 +31,7 @@ write_files:
       PGBEOF
       
       cat > /etc/pgbouncer/userlist.txt <<USEREOF
-      "pgbouncer" "StrongPass123!"
+      "pgbouncer" "PgBouncer2024#Admin"
       USEREOF
       
       chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt

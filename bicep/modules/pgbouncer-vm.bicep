@@ -100,6 +100,13 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = [for (vmName, i)
   }
 }]
 
+// Generate cloud-init with parameter substitution
+var cloudInitTemplate = loadTextContent('cloudinit/pgbouncer-cloud-init.yaml')
+var cloudInitStep1 = replace(cloudInitTemplate, 'PgBouncer2024#Admin', pgbouncerAdminPass)
+var cloudInitStep2 = replace(cloudInitStep1, 'default_pool_size = 200', 'default_pool_size = ${pgbouncerDefaultPool}')
+var cloudInitStep3 = replace(cloudInitStep2, 'max_client_conn = 2000', 'max_client_conn = ${pgbouncerMaxClientConn}')
+var cloudInitWithPasswords = replace(cloudInitStep3, 'host=10.50.1.10', 'host=${dbIlbIP}')
+
 resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for (vmName, i) in vmNames: {
   name: vmName
   location: location
@@ -115,7 +122,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for (vmName, i) in
       linuxConfiguration: {
         disablePasswordAuthentication: false
       }
-      customData: base64(loadTextContent('cloudinit/pgbouncer-cloud-init.yaml'))
+      customData: base64(cloudInitWithPasswords)
     }
     storageProfile: {
       imageReference: {
