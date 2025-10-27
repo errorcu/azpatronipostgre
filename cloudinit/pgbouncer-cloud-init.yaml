@@ -34,6 +34,9 @@ write_files:
       "pgbouncer" "StrongPass123!"
       USEREOF
       
+      # NOTE: This is a placeholder password. In production deployments,
+      # this file is generated with the actual pgbouncerAdminPass parameter value.
+      
       chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt
       chmod 640 /etc/pgbouncer/userlist.txt
       

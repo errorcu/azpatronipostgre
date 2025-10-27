@@ -122,7 +122,7 @@ bootstrap:
     - host all all 10.50.0.0/16 md5
   users:
     replicator:
-      password: ChangeMe123!
+      password: ChangeMe123!  # CHANGE THIS to match your deployment parameters
       options:
         - replication
 postgresql:
@@ -134,10 +134,10 @@ postgresql:
   authentication:
     superuser:
       username: postgres
-      password: ChangeMe123!
+      password: ChangeMe123!  # CHANGE THIS to match your deployment parameters
     replication:
       username: replicator
-      password: ChangeMe123!
+      password: ChangeMe123!  # CHANGE THIS to match your deployment parameters
 tags:
   nofailover: false
   noloadbalance: false
