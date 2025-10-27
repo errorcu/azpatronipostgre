@@ -108,6 +108,10 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = [for (vmName, i)
   }
 }]
 
+// Generate cloud-init with parameter substitution
+var cloudInitTemplate = loadTextContent('cloudinit/cloud-init.yaml')
+var cloudInitWithPasswords = replace(replace(cloudInitTemplate, 'PostgreSQL2024#Strong', postgresPassword), 'Replicator2024#Secure', replicatorPassword)
+
 resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for (vmName, i) in vmNames: {
   name: vmName
   location: location
@@ -123,7 +127,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = [for (vmName, i) in
       linuxConfiguration: {
         disablePasswordAuthentication: false
       }
-      customData: base64(loadTextContent('cloudinit/cloud-init.yaml'))
+      customData: base64(cloudInitWithPasswords)
     }
     storageProfile: {
       imageReference: {

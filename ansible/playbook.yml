@@ -3,8 +3,8 @@
   hosts: db_nodes
   become: yes
   vars:
-    postgres_password: "ChangeMe123!"
-    replicator_password: "ChangeMe123!"
+    postgres_password: "PostgreSQL2024#Strong"
+    replicator_password: "Replicator2024#Secure"
     
   tasks:
     - name: Add PostgreSQL APT repository key
@@ -183,7 +183,7 @@
   vars:
     db_ilb_ip: "10.50.1.10"
     pgbouncer_admin_user: "pgbouncer"
-    pgbouncer_admin_pass: "StrongPass123!"
+    pgbouncer_admin_pass: "PgBouncer2024#Admin"
     
   tasks:
     - name: Install PgBouncer

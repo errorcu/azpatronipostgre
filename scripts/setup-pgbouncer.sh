@@ -37,7 +37,7 @@ EOF
 
 # Create userlist
 cat > /etc/pgbouncer/userlist.txt <<EOF
-"pgbouncer" "StrongPass123!"
+"pgbouncer" "PgBouncer2024#Admin"
 EOF
 
 chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt
