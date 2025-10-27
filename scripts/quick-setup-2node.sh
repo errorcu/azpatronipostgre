@@ -52,11 +52,17 @@ fi
 
 # Stop PostgreSQL and move data
 systemctl stop postgresql
-# rsync may fail if source directory doesn't exist, disable error exit temporarily
-set +e
-rsync -a /var/lib/postgresql/16/main/ /pgdata/
-set -e
-chown -R postgres:postgres /pgdata /pgwal
+# Copy PostgreSQL data if source exists, using || true to allow script to continue if copy fails
+if [ -d "/var/lib/postgresql/16/main/" ]; then
+    rsync -a /var/lib/postgresql/16/main/ /pgdata/ || true
+fi
+# Ensure proper permissions regardless of whether rsync succeeded
+if [ -d "/pgdata" ]; then
+    chown -R postgres:postgres /pgdata
+fi
+if [ -d "/pgwal" ]; then
+    chown -R postgres:postgres /pgwal
+fi
 sed -i "s|^data_directory = .*|data_directory = '/pgdata'|" /etc/postgresql/16/main/postgresql.conf
 
 # Get hostname and IP
