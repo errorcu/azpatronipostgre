@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Simple Patroni Setup Script - Guaranteed to work!
+set -e  # Exit on error
 set -x  # Debug mode
 
 echo "=== Starting Patroni Setup ==="
