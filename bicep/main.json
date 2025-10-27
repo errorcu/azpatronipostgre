@@ -1,0 +1,1902 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "16920823046668870715"
+    }
+  },
+  "parameters": {
+    "region": {
+      "type": "string",
+      "defaultValue": "germanywestcentral",
+      "allowedValues": [
+        "germanywestcentral",
+        "westeurope",
+        "northeurope",
+        "eastus",
+        "westus2",
+        "centralus",
+        "eastus2",
+        "westus3",
+        "southeastasia",
+        "eastasia",
+        "japaneast",
+        "japanwest",
+        "australiaeast",
+        "australiasoutheast",
+        "canadacentral",
+        "canadaeast",
+        "uksouth",
+        "ukwest",
+        "francecentral",
+        "francesouth",
+        "switzerlandnorth",
+        "switzerlandwest",
+        "norwayeast",
+        "norwaywest",
+        "swedencentral",
+        "italynorth",
+        "spaincentral",
+        "polandcentral",
+        "southafricanorth",
+        "uaenorth",
+        "brazilsouth",
+        "centralindia",
+        "southindia",
+        "westindia"
+      ],
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "prefix": {
+      "type": "string",
+      "defaultValue": "pgpatroni",
+      "metadata": {
+        "description": "Prefix for resource naming"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser",
+      "metadata": {
+        "description": "Admin username for VMs"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "defaultValue": "AzurePatroni2024#",
+      "metadata": {
+        "description": "Admin password for VMs"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D4s_v5",
+      "metadata": {
+        "description": "VM size for database nodes"
+      }
+    },
+    "numberOfNodes": {
+      "type": "int",
+      "defaultValue": 2,
+      "allowedValues": [
+        2,
+        3
+      ],
+      "metadata": {
+        "description": "Number of database nodes"
+      }
+    },
+    "dataDiskSizeGB": {
+      "type": "int",
+      "defaultValue": 1024,
+      "metadata": {
+        "description": "Data disk size in GB"
+      }
+    },
+    "walDiskSizeGB": {
+      "type": "int",
+      "defaultValue": 512,
+      "metadata": {
+        "description": "WAL disk size in GB"
+      }
+    },
+    "diskSku": {
+      "type": "string",
+      "defaultValue": "Premium_LRS",
+      "allowedValues": [
+        "Premium_LRS",
+        "Premium_ZRS",
+        "StandardSSD_LRS",
+        "StandardSSD_ZRS",
+        "UltraSSD_LRS"
+      ],
+      "metadata": {
+        "description": "Managed disk SKU"
+      }
+    },
+    "addressPrefix": {
+      "type": "string",
+      "defaultValue": "10.50.0.0/16",
+      "metadata": {
+        "description": "VNet address prefix"
+      }
+    },
+    "subnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.50.1.0/24",
+      "metadata": {
+        "description": "Subnet address prefix"
+      }
+    },
+    "lbPrivateIP": {
+      "type": "string",
+      "defaultValue": "10.50.1.10",
+      "metadata": {
+        "description": "Load balancer private IP"
+      }
+    },
+    "postgresPassword": {
+      "type": "securestring",
+      "defaultValue": "PostgreSQL2024#Strong",
+      "metadata": {
+        "description": "PostgreSQL password"
+      }
+    },
+    "replicatorPassword": {
+      "type": "securestring",
+      "defaultValue": "Replicator2024#Secure",
+      "metadata": {
+        "description": "Replicator password"
+      }
+    },
+    "enablePublicLB": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable public load balancer"
+      }
+    },
+    "enablePgBouncerTier": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable PgBouncer tier"
+      }
+    },
+    "pgbouncerLbPrivateIP": {
+      "type": "string",
+      "defaultValue": "10.50.1.11",
+      "metadata": {
+        "description": "PgBouncer load balancer private IP"
+      }
+    },
+    "pgbouncerDefaultPool": {
+      "type": "int",
+      "defaultValue": 200,
+      "metadata": {
+        "description": "PgBouncer default pool size"
+      }
+    },
+    "pgbouncerMaxClientConn": {
+      "type": "int",
+      "defaultValue": 2000,
+      "metadata": {
+        "description": "PgBouncer max client connections"
+      }
+    },
+    "pgbouncerAdminUser": {
+      "type": "string",
+      "defaultValue": "pgbouncer",
+      "metadata": {
+        "description": "PgBouncer admin user"
+      }
+    },
+    "pgbouncerAdminPass": {
+      "type": "securestring",
+      "defaultValue": "PgBouncer2024#Admin",
+      "metadata": {
+        "description": "PgBouncer admin password"
+      }
+    }
+  },
+  "variables": {
+    "vnetName": "[format('{0}-vnet', parameters('prefix'))]",
+    "subnetName": "db",
+    "nsgName": "[format('{0}-nsg', parameters('prefix'))]",
+    "natGatewayName": "[format('{0}-nat', parameters('prefix'))]",
+    "natPublicIPName": "[format('{0}-nat-pip', parameters('prefix'))]",
+    "ilbName": "[format('{0}-ilb', parameters('prefix'))]",
+    "elbName": "[format('{0}-elb', parameters('prefix'))]",
+    "pgbIlbName": "[format('{0}-pgb-ilb', parameters('prefix'))]",
+    "bePoolName": "bepool",
+    "pgbBePoolName": "pgb-bepool",
+    "probeName": "patroniProbe",
+    "pgbProbeName": "pgbProbe",
+    "lbruleName": "pg",
+    "pgbRuleName": "pgb",
+    "vmNames": "[if(equals(parameters('numberOfNodes'), 2), createArray(format('{0}-1', parameters('prefix')), format('{0}-2', parameters('prefix'))), createArray(format('{0}-1', parameters('prefix')), format('{0}-2', parameters('prefix')), format('{0}-3', parameters('prefix'))))]",
+    "vmIps": "[if(equals(parameters('numberOfNodes'), 2), createArray('10.50.1.4', '10.50.1.5'), createArray('10.50.1.4', '10.50.1.5', '10.50.1.6'))]",
+    "zones": "[if(equals(parameters('numberOfNodes'), 2), createArray('1', '2'), createArray('1', '2', '3'))]",
+    "pgbVmNames": [
+      "[format('{0}-pgb-1', parameters('prefix'))]",
+      "[format('{0}-pgb-2', parameters('prefix'))]"
+    ],
+    "pgbVmIps": [
+      "10.50.1.7",
+      "10.50.1.8"
+    ],
+    "pgbZones": [
+      "1",
+      "2"
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "nat-gateway-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "natGatewayName": {
+            "value": "[variables('natGatewayName')]"
+          },
+          "natPublicIPName": {
+            "value": "[variables('natPublicIPName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "1373485975640523528"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "natGatewayName": {
+              "type": "string",
+              "metadata": {
+                "description": "NAT Gateway name"
+              }
+            },
+            "natPublicIPName": {
+              "type": "string",
+              "metadata": {
+                "description": "Public IP name for NAT Gateway"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('natPublicIPName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/natGateways",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('natGatewayName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIpAddresses": [
+                  {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('natPublicIPName'))]"
+                  }
+                ],
+                "idleTimeoutInMinutes": 10
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('natPublicIPName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "natGatewayId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/natGateways', parameters('natGatewayName'))]"
+            },
+            "natPublicIP": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('natPublicIPName')), '2023-11-01').ipAddress]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "vnet-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "subnetName": {
+            "value": "[variables('subnetName')]"
+          },
+          "addressPrefix": {
+            "value": "[parameters('addressPrefix')]"
+          },
+          "subnetPrefix": {
+            "value": "[parameters('subnetPrefix')]"
+          },
+          "natGatewayId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'nat-gateway-deployment'), '2022-09-01').outputs.natGatewayId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "10806632473374277172"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet name"
+              }
+            },
+            "addressPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet address prefix"
+              }
+            },
+            "subnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet address prefix"
+              }
+            },
+            "natGatewayId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "NAT Gateway ID (optional)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('addressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[parameters('subnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('subnetPrefix')]",
+                      "natGateway": "[if(not(empty(parameters('natGatewayId'))), createObject('id', parameters('natGatewayId')), null())]"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "subnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), parameters('subnetName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'nat-gateway-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "nsg-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "nsgName": {
+            "value": "[variables('nsgName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "16029338993788370837"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "nsgName": {
+              "type": "string",
+              "metadata": {
+                "description": "NSG name"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('nsgName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "ssh",
+                    "properties": {
+                      "priority": 100,
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "direction": "Inbound",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "22"
+                    }
+                  },
+                  {
+                    "name": "postgres",
+                    "properties": {
+                      "priority": 110,
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "direction": "Inbound",
+                      "sourceAddressPrefix": "10.50.0.0/16",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "5432"
+                    }
+                  },
+                  {
+                    "name": "pgbouncer",
+                    "properties": {
+                      "priority": 115,
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "direction": "Inbound",
+                      "sourceAddressPrefix": "10.50.0.0/16",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "6432"
+                    }
+                  },
+                  {
+                    "name": "patroni",
+                    "properties": {
+                      "priority": 120,
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "direction": "Inbound",
+                      "sourceAddressPrefix": "10.50.0.0/16",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "8008"
+                    }
+                  },
+                  {
+                    "name": "etcd",
+                    "properties": {
+                      "priority": 130,
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "direction": "Inbound",
+                      "sourceAddressPrefix": "10.50.0.0/16",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "2379-2380"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "nsgId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgName'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "ilb-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "lbName": {
+            "value": "[variables('ilbName')]"
+          },
+          "lbPrivateIP": {
+            "value": "[parameters('lbPrivateIP')]"
+          },
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "subnetName": {
+            "value": "[variables('subnetName')]"
+          },
+          "bePoolName": {
+            "value": "[variables('bePoolName')]"
+          },
+          "probeName": {
+            "value": "[variables('probeName')]"
+          },
+          "lbruleName": {
+            "value": "[variables('lbruleName')]"
+          },
+          "isPublic": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "9824723875046883358"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "lbName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer name"
+              }
+            },
+            "lbPrivateIP": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer private IP"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet name"
+              }
+            },
+            "bePoolName": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend pool name"
+              }
+            },
+            "probeName": {
+              "type": "string",
+              "metadata": {
+                "description": "Probe name"
+              }
+            },
+            "lbruleName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancing rule name"
+              }
+            },
+            "isPublic": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Is public load balancer"
+              }
+            },
+            "prefix": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Prefix for resource naming"
+              }
+            },
+            "port": {
+              "type": "int",
+              "defaultValue": 5432,
+              "metadata": {
+                "description": "Port for load balancer"
+              }
+            },
+            "probePort": {
+              "type": "int",
+              "defaultValue": 8008,
+              "metadata": {
+                "description": "Probe port"
+              }
+            },
+            "probeProtocol": {
+              "type": "string",
+              "defaultValue": "Http",
+              "metadata": {
+                "description": "Probe protocol"
+              }
+            },
+            "probeRequestPath": {
+              "type": "string",
+              "defaultValue": "/primary",
+              "metadata": {
+                "description": "Probe request path"
+              }
+            }
+          },
+          "resources": [
+            {
+              "condition": "[parameters('isPublic')]",
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-pip', parameters('lbName'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/loadBalancers",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('lbName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "frontendIPConfigurations": [
+                  {
+                    "name": "fe",
+                    "properties": "[if(parameters('isPublic'), createObject('publicIPAddress', createObject('id', resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName'))))), createObject('subnet', createObject('id', resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))), 'privateIPAllocationMethod', 'Static', 'privateIPAddress', parameters('lbPrivateIP')))]"
+                  }
+                ],
+                "backendAddressPools": [
+                  {
+                    "name": "[parameters('bePoolName')]"
+                  }
+                ],
+                "probes": [
+                  {
+                    "name": "[parameters('probeName')]",
+                    "properties": {
+                      "protocol": "[parameters('probeProtocol')]",
+                      "port": "[parameters('probePort')]",
+                      "requestPath": "[if(equals(parameters('probeProtocol'), 'Http'), parameters('probeRequestPath'), null())]",
+                      "intervalInSeconds": 5,
+                      "numberOfProbes": 2
+                    }
+                  }
+                ],
+                "loadBalancingRules": [
+                  {
+                    "name": "[parameters('lbruleName')]",
+                    "properties": {
+                      "frontendIPConfiguration": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', parameters('lbName'), 'fe')]"
+                      },
+                      "backendAddressPool": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', parameters('lbName'), parameters('bePoolName'))]"
+                      },
+                      "protocol": "Tcp",
+                      "frontendPort": "[parameters('port')]",
+                      "backendPort": "[parameters('port')]",
+                      "enableFloatingIP": false,
+                      "idleTimeoutInMinutes": 30,
+                      "probe": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/probes', parameters('lbName'), parameters('probeName'))]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "lbId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/loadBalancers', parameters('lbName'))]"
+            },
+            "lbPrivateIP": {
+              "type": "string",
+              "value": "[if(parameters('isPublic'), '', reference(resourceId('Microsoft.Network/loadBalancers', parameters('lbName')), '2023-11-01').frontendIPConfigurations[0].properties.privateIPAddress)]"
+            },
+            "lbPublicIP": {
+              "type": "string",
+              "value": "[if(parameters('isPublic'), reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName'))), '2023-11-01').ipAddress, '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'vnet-deployment')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePublicLB')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "elb-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "lbName": {
+            "value": "[variables('elbName')]"
+          },
+          "lbPrivateIP": {
+            "value": "[parameters('lbPrivateIP')]"
+          },
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "subnetName": {
+            "value": "[variables('subnetName')]"
+          },
+          "bePoolName": {
+            "value": "[variables('bePoolName')]"
+          },
+          "probeName": {
+            "value": "[variables('probeName')]"
+          },
+          "lbruleName": {
+            "value": "[variables('lbruleName')]"
+          },
+          "isPublic": {
+            "value": true
+          },
+          "prefix": {
+            "value": "[parameters('prefix')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "9824723875046883358"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "lbName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer name"
+              }
+            },
+            "lbPrivateIP": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer private IP"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet name"
+              }
+            },
+            "bePoolName": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend pool name"
+              }
+            },
+            "probeName": {
+              "type": "string",
+              "metadata": {
+                "description": "Probe name"
+              }
+            },
+            "lbruleName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancing rule name"
+              }
+            },
+            "isPublic": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Is public load balancer"
+              }
+            },
+            "prefix": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Prefix for resource naming"
+              }
+            },
+            "port": {
+              "type": "int",
+              "defaultValue": 5432,
+              "metadata": {
+                "description": "Port for load balancer"
+              }
+            },
+            "probePort": {
+              "type": "int",
+              "defaultValue": 8008,
+              "metadata": {
+                "description": "Probe port"
+              }
+            },
+            "probeProtocol": {
+              "type": "string",
+              "defaultValue": "Http",
+              "metadata": {
+                "description": "Probe protocol"
+              }
+            },
+            "probeRequestPath": {
+              "type": "string",
+              "defaultValue": "/primary",
+              "metadata": {
+                "description": "Probe request path"
+              }
+            }
+          },
+          "resources": [
+            {
+              "condition": "[parameters('isPublic')]",
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-pip', parameters('lbName'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/loadBalancers",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('lbName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "frontendIPConfigurations": [
+                  {
+                    "name": "fe",
+                    "properties": "[if(parameters('isPublic'), createObject('publicIPAddress', createObject('id', resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName'))))), createObject('subnet', createObject('id', resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))), 'privateIPAllocationMethod', 'Static', 'privateIPAddress', parameters('lbPrivateIP')))]"
+                  }
+                ],
+                "backendAddressPools": [
+                  {
+                    "name": "[parameters('bePoolName')]"
+                  }
+                ],
+                "probes": [
+                  {
+                    "name": "[parameters('probeName')]",
+                    "properties": {
+                      "protocol": "[parameters('probeProtocol')]",
+                      "port": "[parameters('probePort')]",
+                      "requestPath": "[if(equals(parameters('probeProtocol'), 'Http'), parameters('probeRequestPath'), null())]",
+                      "intervalInSeconds": 5,
+                      "numberOfProbes": 2
+                    }
+                  }
+                ],
+                "loadBalancingRules": [
+                  {
+                    "name": "[parameters('lbruleName')]",
+                    "properties": {
+                      "frontendIPConfiguration": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', parameters('lbName'), 'fe')]"
+                      },
+                      "backendAddressPool": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', parameters('lbName'), parameters('bePoolName'))]"
+                      },
+                      "protocol": "Tcp",
+                      "frontendPort": "[parameters('port')]",
+                      "backendPort": "[parameters('port')]",
+                      "enableFloatingIP": false,
+                      "idleTimeoutInMinutes": 30,
+                      "probe": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/probes', parameters('lbName'), parameters('probeName'))]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "lbId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/loadBalancers', parameters('lbName'))]"
+            },
+            "lbPrivateIP": {
+              "type": "string",
+              "value": "[if(parameters('isPublic'), '', reference(resourceId('Microsoft.Network/loadBalancers', parameters('lbName')), '2023-11-01').frontendIPConfigurations[0].properties.privateIPAddress)]"
+            },
+            "lbPublicIP": {
+              "type": "string",
+              "value": "[if(parameters('isPublic'), reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName'))), '2023-11-01').ipAddress, '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'vnet-deployment')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePgBouncerTier')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "pgb-ilb-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "lbName": {
+            "value": "[variables('pgbIlbName')]"
+          },
+          "lbPrivateIP": {
+            "value": "[parameters('pgbouncerLbPrivateIP')]"
+          },
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "subnetName": {
+            "value": "[variables('subnetName')]"
+          },
+          "bePoolName": {
+            "value": "[variables('pgbBePoolName')]"
+          },
+          "probeName": {
+            "value": "[variables('pgbProbeName')]"
+          },
+          "lbruleName": {
+            "value": "[variables('pgbRuleName')]"
+          },
+          "isPublic": {
+            "value": false
+          },
+          "port": {
+            "value": 6432
+          },
+          "probePort": {
+            "value": 6432
+          },
+          "probeProtocol": {
+            "value": "Tcp"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "9824723875046883358"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "lbName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer name"
+              }
+            },
+            "lbPrivateIP": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer private IP"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet name"
+              }
+            },
+            "bePoolName": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend pool name"
+              }
+            },
+            "probeName": {
+              "type": "string",
+              "metadata": {
+                "description": "Probe name"
+              }
+            },
+            "lbruleName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancing rule name"
+              }
+            },
+            "isPublic": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Is public load balancer"
+              }
+            },
+            "prefix": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Prefix for resource naming"
+              }
+            },
+            "port": {
+              "type": "int",
+              "defaultValue": 5432,
+              "metadata": {
+                "description": "Port for load balancer"
+              }
+            },
+            "probePort": {
+              "type": "int",
+              "defaultValue": 8008,
+              "metadata": {
+                "description": "Probe port"
+              }
+            },
+            "probeProtocol": {
+              "type": "string",
+              "defaultValue": "Http",
+              "metadata": {
+                "description": "Probe protocol"
+              }
+            },
+            "probeRequestPath": {
+              "type": "string",
+              "defaultValue": "/primary",
+              "metadata": {
+                "description": "Probe request path"
+              }
+            }
+          },
+          "resources": [
+            {
+              "condition": "[parameters('isPublic')]",
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-pip', parameters('lbName'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/loadBalancers",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('lbName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "frontendIPConfigurations": [
+                  {
+                    "name": "fe",
+                    "properties": "[if(parameters('isPublic'), createObject('publicIPAddress', createObject('id', resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName'))))), createObject('subnet', createObject('id', resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))), 'privateIPAllocationMethod', 'Static', 'privateIPAddress', parameters('lbPrivateIP')))]"
+                  }
+                ],
+                "backendAddressPools": [
+                  {
+                    "name": "[parameters('bePoolName')]"
+                  }
+                ],
+                "probes": [
+                  {
+                    "name": "[parameters('probeName')]",
+                    "properties": {
+                      "protocol": "[parameters('probeProtocol')]",
+                      "port": "[parameters('probePort')]",
+                      "requestPath": "[if(equals(parameters('probeProtocol'), 'Http'), parameters('probeRequestPath'), null())]",
+                      "intervalInSeconds": 5,
+                      "numberOfProbes": 2
+                    }
+                  }
+                ],
+                "loadBalancingRules": [
+                  {
+                    "name": "[parameters('lbruleName')]",
+                    "properties": {
+                      "frontendIPConfiguration": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', parameters('lbName'), 'fe')]"
+                      },
+                      "backendAddressPool": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', parameters('lbName'), parameters('bePoolName'))]"
+                      },
+                      "protocol": "Tcp",
+                      "frontendPort": "[parameters('port')]",
+                      "backendPort": "[parameters('port')]",
+                      "enableFloatingIP": false,
+                      "idleTimeoutInMinutes": 30,
+                      "probe": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/probes', parameters('lbName'), parameters('probeName'))]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "lbId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/loadBalancers', parameters('lbName'))]"
+            },
+            "lbPrivateIP": {
+              "type": "string",
+              "value": "[if(parameters('isPublic'), '', reference(resourceId('Microsoft.Network/loadBalancers', parameters('lbName')), '2023-11-01').frontendIPConfigurations[0].properties.privateIPAddress)]"
+            },
+            "lbPublicIP": {
+              "type": "string",
+              "value": "[if(parameters('isPublic'), reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip', parameters('lbName'))), '2023-11-01').ipAddress, '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'vnet-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "vm-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "vmNames": {
+            "value": "[variables('vmNames')]"
+          },
+          "vmIps": {
+            "value": "[variables('vmIps')]"
+          },
+          "zones": {
+            "value": "[variables('zones')]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "dataDiskSizeGB": {
+            "value": "[parameters('dataDiskSizeGB')]"
+          },
+          "walDiskSizeGB": {
+            "value": "[parameters('walDiskSizeGB')]"
+          },
+          "diskSku": {
+            "value": "[parameters('diskSku')]"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "subnetName": {
+            "value": "[variables('subnetName')]"
+          },
+          "nsgName": {
+            "value": "[variables('nsgName')]"
+          },
+          "ilbName": {
+            "value": "[variables('ilbName')]"
+          },
+          "bePoolName": {
+            "value": "[variables('bePoolName')]"
+          },
+          "postgresPassword": {
+            "value": "[parameters('postgresPassword')]"
+          },
+          "replicatorPassword": {
+            "value": "[parameters('replicatorPassword')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "2626650667865178166"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "vmNames": {
+              "type": "array",
+              "metadata": {
+                "description": "VM names array"
+              }
+            },
+            "vmIps": {
+              "type": "array",
+              "metadata": {
+                "description": "VM IPs array"
+              }
+            },
+            "zones": {
+              "type": "array",
+              "metadata": {
+                "description": "Availability zones"
+              }
+            },
+            "vmSize": {
+              "type": "string",
+              "metadata": {
+                "description": "VM size"
+              }
+            },
+            "dataDiskSizeGB": {
+              "type": "int",
+              "metadata": {
+                "description": "Data disk size in GB"
+              }
+            },
+            "walDiskSizeGB": {
+              "type": "int",
+              "metadata": {
+                "description": "WAL disk size in GB"
+              }
+            },
+            "adminUsername": {
+              "type": "string",
+              "metadata": {
+                "description": "Admin username"
+              }
+            },
+            "adminPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Admin password"
+              }
+            },
+            "diskSku": {
+              "type": "string",
+              "defaultValue": "Premium_LRS",
+              "allowedValues": [
+                "Premium_LRS",
+                "Premium_ZRS",
+                "StandardSSD_LRS",
+                "StandardSSD_ZRS",
+                "UltraSSD_LRS"
+              ],
+              "metadata": {
+                "description": "Disk SKU"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet name"
+              }
+            },
+            "nsgName": {
+              "type": "string",
+              "metadata": {
+                "description": "NSG name"
+              }
+            },
+            "ilbName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer name"
+              }
+            },
+            "bePoolName": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend pool name"
+              }
+            },
+            "postgresPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "PostgreSQL password"
+              }
+            },
+            "replicatorPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Replicator password"
+              }
+            }
+          },
+          "variables": {
+            "cloudInitTemplate": "#cloud-config\n\npackages:\n  - jq\n  - curl\n  - gnupg\n  - lsb-release\n  - python3-pip\n  - etcd\n  - parted\n\nruncmd:\n  - curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pg.gpg\n  - echo \"deb [signed-by=/usr/share/keyrings/pg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main\" > /etc/apt/sources.list.d/pg.list\n  - apt-get update\n  - apt-get install -y postgresql-16 python3-psycopg2\n  - sysctl -w vm.swappiness=1\n  - sysctl -w vm.max_map_count=262144\n  - |\n    DISK_DATA=/dev/disk/azure/scsi1/lun0\n    if [ -b \"$DISK_DATA\" ]; then\n      parted -s ${DISK_DATA} mklabel gpt mkpart primary ext4 1MiB 100%\n      sleep 3\n      mkfs.ext4 -F ${DISK_DATA}1\n      mkdir -p /pgdata\n      echo \"${DISK_DATA}1 /pgdata ext4 defaults,noatime 0 2\" >> /etc/fstab\n      mount -a\n      chmod 700 /pgdata\n      chown -R postgres:postgres /pgdata\n    fi\n  - |\n    DISK_WAL=/dev/disk/azure/scsi1/lun1\n    if [ -b \"$DISK_WAL\" ]; then\n      parted -s ${DISK_WAL} mklabel gpt mkpart primary ext4 1MiB 100%\n      sleep 3\n      mkfs.ext4 -F ${DISK_WAL}1\n      mkdir -p /pgwal\n      echo \"${DISK_WAL}1 /pgwal ext4 defaults,noatime 0 2\" >> /etc/fstab\n      mount -a\n      chmod 700 /pgwal\n      chown -R postgres:postgres /pgwal\n    fi\n  - |\n    HOSTNAME=$(hostname -s)\n    IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)\n    \n    # Auto-detect etcd cluster size (2 or 3 nodes)\n    ETCD_CLUSTER=\"pgpatroni-1=http://10.50.1.4:2380,pgpatroni-2=http://10.50.1.5:2380\"\n    ETCD_HOSTS=\"10.50.1.4:2379,10.50.1.5:2379\"\n    \n    # Check if 3rd node exists (wait up to 30 seconds)\n    for i in {1..6}; do\n      if ping -c 1 -W 1 10.50.1.6 > /dev/null 2>&1; then\n        ETCD_CLUSTER=\"${ETCD_CLUSTER},pgpatroni-3=http://10.50.1.6:2380\"\n        ETCD_HOSTS=\"${ETCD_HOSTS},10.50.1.6:2379\"\n        echo \"Detected 3-node cluster\"\n        break\n      fi\n      sleep 5\n    done\n    \n    cat > /etc/default/etcd <<ETCDEOF\nETCD_NAME=\"${HOSTNAME}\"\nETCD_INITIAL_CLUSTER=\"${ETCD_CLUSTER}\"\nETCD_INITIAL_CLUSTER_STATE=\"new\"\nETCD_INITIAL_ADVERTISE_PEER_URLS=\"http://${IP}:2380\"\nETCD_ADVERTISE_CLIENT_URLS=\"http://${IP}:2379\"\nETCD_LISTEN_PEER_URLS=\"http://${IP}:2380\"\nETCD_LISTEN_CLIENT_URLS=\"http://127.0.0.1:2379,http://${IP}:2379\"\nETCDEOF\n    \n    # Save etcd hosts for Patroni\n    echo \"${ETCD_HOSTS}\" > /tmp/etcd_hosts\n  - systemctl stop postgresql || true\n  - systemctl disable postgresql || true\n  - systemctl enable etcd\n  - systemctl restart etcd\n  - sleep 10\n  - pip3 install patroni[etcd] requests\n  - mkdir -p /etc/patroni\n  - |\n    HOSTNAME=$(hostname -s)\n    IP=$(ip -4 addr show dev eth0 | awk '/inet /{print $2}' | cut -d/ -f1)\n    ETCD_HOSTS=$(cat /tmp/etcd_hosts)\n    \n    cat > /etc/patroni/patroni.yml <<PATRONIEOF\nscope: pg-ha\nnamespace: /service/\nname: ${HOSTNAME}\nrestapi:\n  listen: 0.0.0.0:8008\n  connect_address: ${IP}:8008\netcd:\n  hosts: ${ETCD_HOSTS}\nbootstrap:\n  dcs:\n    ttl: 20\n    loop_wait: 5\n    retry_timeout: 5\n    maximum_lag_on_failover: 1048576\n    synchronous_mode: true\n    synchronous_mode_strict: false\n    synchronous_node_count: 1\n    postgresql:\n      parameters:\n        wal_level: logical\n        max_wal_senders: 20\n        max_replication_slots: 20\n        shared_buffers: 4GB\n        effective_cache_size: 8GB\n        maintenance_work_mem: 1GB\n        work_mem: 64MB\n        checkpoint_timeout: 10min\n        synchronous_commit: on\n      use_slots: true\n      use_pg_rewind: true\n  initdb:\n    - encoding: UTF8\n    - data-checksums\n  pg_hba:\n    - host replication replicator 10.50.0.0/16 md5\n    - host all all 10.50.0.0/16 md5\n  users:\n    replicator:\n      password: Replicator2024#Secure\n      options:\n        - replication\npostgresql:\n  listen: 0.0.0.0:5432\n  connect_address: ${IP}:5432\n  data_dir: /pgdata\n  bin_dir: /usr/lib/postgresql/16/bin\n  parameters: {}\n  authentication:\n    superuser:\n      username: postgres\n      password: PostgreSQL2024#Strong\n    replication:\n      username: replicator\n      password: Replicator2024#Secure\ntags:\n  nofailover: false\n  noloadbalance: false\n  clonefrom: false\nPATRONIEOF\n  - chown postgres:postgres /etc/patroni/patroni.yml\n  - |\n    cat > /etc/systemd/system/patroni.service <<'SERVICEEOF'\n[Unit]\nDescription=Patroni PostgreSQL HA\nAfter=network.target etcd.service\n\n[Service]\nType=simple\nUser=postgres\nGroup=postgres\nExecStart=/usr/local/bin/patroni /etc/patroni/patroni.yml\nRestart=on-failure\nRestartSec=5\nLimitNOFILE=100000\n\n[Install]\nWantedBy=multi-user.target\nSERVICEEOF\n  - systemctl daemon-reload\n  - systemctl enable patroni\n  - systemctl start patroni\n",
+            "cloudInitWithPasswords": "[replace(replace(variables('cloudInitTemplate'), 'PostgreSQL2024#Strong', parameters('postgresPassword')), 'Replicator2024#Secure', parameters('replicatorPassword'))]"
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "nic",
+                "count": "[length(parameters('vmNames'))]"
+              },
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-nic', parameters('vmNames')[copyIndex()])]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipconfig1",
+                    "properties": {
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+                      },
+                      "privateIPAllocationMethod": "Static",
+                      "privateIPAddress": "[parameters('vmIps')[copyIndex()]]",
+                      "loadBalancerBackendAddressPools": [
+                        {
+                          "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', parameters('ilbName'), parameters('bePoolName'))]"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgName'))]"
+                }
+              }
+            },
+            {
+              "copy": {
+                "name": "vm",
+                "count": "[length(parameters('vmNames'))]"
+              },
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('vmNames')[copyIndex()]]",
+              "location": "[parameters('location')]",
+              "zones": [
+                "[parameters('zones')[copyIndex()]]"
+              ],
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                  "computerName": "[parameters('vmNames')[copyIndex()]]",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "adminPassword": "[parameters('adminPassword')]",
+                  "linuxConfiguration": {
+                    "disablePasswordAuthentication": false
+                  },
+                  "customData": "[base64(variables('cloudInitWithPasswords'))]"
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "Canonical",
+                    "offer": "0001-com-ubuntu-server-jammy",
+                    "sku": "22_04-lts",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "createOption": "FromImage",
+                    "managedDisk": {
+                      "storageAccountType": "Premium_LRS"
+                    }
+                  },
+                  "dataDisks": "[if(greater(parameters('dataDiskSizeGB'), 0), createArray(createObject('lun', 0, 'createOption', 'Empty', 'diskSizeGB', parameters('dataDiskSizeGB'), 'managedDisk', createObject('storageAccountType', parameters('diskSku'))), createObject('lun', 1, 'createOption', 'Empty', 'diskSizeGB', parameters('walDiskSizeGB'), 'managedDisk', createObject('storageAccountType', parameters('diskSku')))), createArray())]"
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmNames')[copyIndex()]))]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "nic"
+              ]
+            }
+          ],
+          "outputs": {
+            "vmIds": {
+              "type": "array",
+              "copy": {
+                "count": "[length(parameters('vmNames'))]",
+                "input": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmNames')[copyIndex()])]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'ilb-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'nsg-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'vnet-deployment')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePgBouncerTier')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "pgb-vm-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('region')]"
+          },
+          "vmNames": {
+            "value": "[variables('pgbVmNames')]"
+          },
+          "vmIps": {
+            "value": "[variables('pgbVmIps')]"
+          },
+          "zones": {
+            "value": "[variables('pgbZones')]"
+          },
+          "vmSize": {
+            "value": "Standard_D2s_v5"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "subnetName": {
+            "value": "[variables('subnetName')]"
+          },
+          "nsgName": {
+            "value": "[variables('nsgName')]"
+          },
+          "ilbName": {
+            "value": "[variables('pgbIlbName')]"
+          },
+          "bePoolName": {
+            "value": "[variables('pgbBePoolName')]"
+          },
+          "dbIlbIP": {
+            "value": "[parameters('lbPrivateIP')]"
+          },
+          "pgbouncerAdminUser": {
+            "value": "[parameters('pgbouncerAdminUser')]"
+          },
+          "pgbouncerAdminPass": {
+            "value": "[parameters('pgbouncerAdminPass')]"
+          },
+          "pgbouncerDefaultPool": {
+            "value": "[parameters('pgbouncerDefaultPool')]"
+          },
+          "pgbouncerMaxClientConn": {
+            "value": "[parameters('pgbouncerMaxClientConn')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "349260100649999454"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the resource"
+              }
+            },
+            "vmNames": {
+              "type": "array",
+              "metadata": {
+                "description": "VM names array"
+              }
+            },
+            "vmIps": {
+              "type": "array",
+              "metadata": {
+                "description": "VM IPs array"
+              }
+            },
+            "zones": {
+              "type": "array",
+              "metadata": {
+                "description": "Availability zones"
+              }
+            },
+            "vmSize": {
+              "type": "string",
+              "metadata": {
+                "description": "VM size"
+              }
+            },
+            "adminUsername": {
+              "type": "string",
+              "metadata": {
+                "description": "Admin username"
+              }
+            },
+            "adminPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Admin password"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet name"
+              }
+            },
+            "nsgName": {
+              "type": "string",
+              "metadata": {
+                "description": "NSG name"
+              }
+            },
+            "ilbName": {
+              "type": "string",
+              "metadata": {
+                "description": "Load balancer name"
+              }
+            },
+            "bePoolName": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend pool name"
+              }
+            },
+            "dbIlbIP": {
+              "type": "string",
+              "metadata": {
+                "description": "DB ILB IP for PgBouncer"
+              }
+            },
+            "pgbouncerAdminUser": {
+              "type": "string",
+              "metadata": {
+                "description": "PgBouncer admin user"
+              }
+            },
+            "pgbouncerAdminPass": {
+              "type": "securestring",
+              "metadata": {
+                "description": "PgBouncer admin password"
+              }
+            },
+            "pgbouncerDefaultPool": {
+              "type": "int",
+              "metadata": {
+                "description": "PgBouncer default pool size"
+              }
+            },
+            "pgbouncerMaxClientConn": {
+              "type": "int",
+              "metadata": {
+                "description": "PgBouncer max client connections"
+              }
+            }
+          },
+          "variables": {
+            "cloudInitTemplate": "#cloud-config\n\npackages:\n  - pgbouncer\n  - postgresql-client\n\nruncmd:\n  - |\n    cat > /etc/pgbouncer/pgbouncer.ini <<'PGBEOF'\n    [databases]\n    postgres = host=10.50.1.10 port=5432 dbname=postgres\n    * = host=10.50.1.10 port=5432\n    [pgbouncer]\n    listen_addr = 0.0.0.0\n    listen_port = 6432\n    pool_mode = transaction\n    default_pool_size = 200\n    max_client_conn = 2000\n    ignore_startup_parameters = extra_float_digits\n    server_tls_sslmode = prefer\n    auth_type = md5\n    auth_file = /etc/pgbouncer/userlist.txt\n    admin_users = pgbouncer\n    PGBEOF\n  - |\n    cat > /etc/pgbouncer/userlist.txt <<'USEREOF'\n    \"pgbouncer\" \"PgBouncer2024#Admin\"\n    USEREOF\n  - chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt\n  - chmod 640 /etc/pgbouncer/userlist.txt\n  - systemctl enable pgbouncer\n  - systemctl restart pgbouncer\n",
+            "cloudInitStep1": "[replace(variables('cloudInitTemplate'), 'PgBouncer2024#Admin', parameters('pgbouncerAdminPass'))]",
+            "cloudInitStep2": "[replace(variables('cloudInitStep1'), 'default_pool_size = 200', format('default_pool_size = {0}', parameters('pgbouncerDefaultPool')))]",
+            "cloudInitStep3": "[replace(variables('cloudInitStep2'), 'max_client_conn = 2000', format('max_client_conn = {0}', parameters('pgbouncerMaxClientConn')))]",
+            "cloudInitWithPasswords": "[replace(variables('cloudInitStep3'), 'host=10.50.1.10', format('host={0}', parameters('dbIlbIP')))]"
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "nic",
+                "count": "[length(parameters('vmNames'))]"
+              },
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-nic', parameters('vmNames')[copyIndex()])]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipconfig1",
+                    "properties": {
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+                      },
+                      "privateIPAllocationMethod": "Static",
+                      "privateIPAddress": "[parameters('vmIps')[copyIndex()]]",
+                      "loadBalancerBackendAddressPools": [
+                        {
+                          "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', parameters('ilbName'), parameters('bePoolName'))]"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgName'))]"
+                }
+              }
+            },
+            {
+              "copy": {
+                "name": "vm",
+                "count": "[length(parameters('vmNames'))]"
+              },
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('vmNames')[copyIndex()]]",
+              "location": "[parameters('location')]",
+              "zones": [
+                "[parameters('zones')[copyIndex()]]"
+              ],
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                  "computerName": "[parameters('vmNames')[copyIndex()]]",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "adminPassword": "[parameters('adminPassword')]",
+                  "linuxConfiguration": {
+                    "disablePasswordAuthentication": false
+                  },
+                  "customData": "[base64(variables('cloudInitWithPasswords'))]"
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "Canonical",
+                    "offer": "0001-com-ubuntu-server-jammy",
+                    "sku": "22_04-lts",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "createOption": "FromImage",
+                    "managedDisk": {
+                      "storageAccountType": "Premium_LRS"
+                    }
+                  }
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmNames')[copyIndex()]))]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "nic"
+              ]
+            }
+          ],
+          "outputs": {
+            "vmIds": {
+              "type": "array",
+              "copy": {
+                "count": "[length(parameters('vmNames'))]",
+                "input": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmNames')[copyIndex()])]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'nsg-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'pgb-ilb-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'vnet-deployment')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "dbIlbIP": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'ilb-deployment'), '2022-09-01').outputs.lbPrivateIP.value]"
+    },
+    "elbIP": {
+      "type": "string",
+      "value": "[if(parameters('enablePublicLB'), reference(resourceId('Microsoft.Resources/deployments', 'elb-deployment'), '2022-09-01').outputs.lbPublicIP.value, 'disabled')]"
+    },
+    "pgbIlbIP": {
+      "type": "string",
+      "value": "[if(parameters('enablePgBouncerTier'), reference(resourceId('Microsoft.Resources/deployments', 'pgb-ilb-deployment'), '2022-09-01').outputs.lbPrivateIP.value, 'disabled')]"
+    },
+    "numberOfNodesDeployed": {
+      "type": "int",
+      "value": "[parameters('numberOfNodes')]"
+    },
+    "diskSkuUsed": {
+      "type": "string",
+      "value": "[parameters('diskSku')]"
+    },
+    "deployedRegion": {
+      "type": "string",
+      "value": "[parameters('region')]"
+    },
+    "natGatewayPublicIP": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'nat-gateway-deployment'), '2022-09-01').outputs.natPublicIP.value]"
+    }
+  }
+}
