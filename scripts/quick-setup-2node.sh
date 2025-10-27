@@ -52,7 +52,9 @@ fi
 
 # Stop PostgreSQL and move data
 systemctl stop postgresql
+set +e  # Temporarily allow errors for rsync (may fail if directory doesn't exist)
 rsync -a /var/lib/postgresql/16/main/ /pgdata/ || true
+set -e  # Re-enable exit on error
 chown -R postgres:postgres /pgdata /pgwal
 sed -i "s|^data_directory = .*|data_directory = '/pgdata'|" /etc/postgresql/16/main/postgresql.conf
 
